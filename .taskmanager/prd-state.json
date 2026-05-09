@@ -1,0 +1,25 @@
+{
+  "sessionId": "fa-distribuidora-prd-2026-05-09",
+  "prdType": "product",
+  "slug": "fa-distribuidora",
+  "startedAt": "2026-05-09T00:00:00Z",
+  "lastUpdatedAt": "2026-05-09T00:00:00Z",
+  "currentCategory": "completed",
+  "completedCategories": [
+    "problem-context",
+    "users-personas",
+    "solution-features",
+    "technical-implementation",
+    "business-value",
+    "ux-design",
+    "risks-concerns",
+    "testing-quality"
+  ],
+  "answers": {
+    "source": "Imported from requisitos-deposito-bebidas.docx (v1.0, 2026-05-09) and FA Distribuidora brand manual",
+    "approach": "Skipped interactive interview; existing requirements document was comprehensive and adopted as source of truth"
+  },
+  "initialPrompt": "Generate the build requirements for this project — build the PRD (originally asked in Portuguese)",
+  "outputFile": "docs/prd/prd-fa-distribuidora.md",
+  "documentationLanguage": "en"
+}

@@ -1,0 +1,1 @@
+Full-stack management system for beverage depots, built with Laravel 12 and Livewire 3. Handles product catalog with multiple variants, customer registry with per-customer delivery and building fees, batch-based inventory with expiration tracking, sales with multiple payment methods (cash, PIX, debit, credit), daily delivery dispatch, and optional returnable water gallon ledger.
