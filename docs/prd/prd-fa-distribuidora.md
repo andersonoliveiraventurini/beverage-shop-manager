@@ -1,6 +1,6 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.3.0
+> **Version**: 1.4.0
 > **Status**: Draft
 > **Created**: 2026-05-09
 > **Last Updated**: 2026-05-11
@@ -203,6 +203,10 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Acceptance criteria**:
 - [ ] Flag 10L/20L variants as returnable + register shell value
 - [ ] 3 modalities at sale time: full load, exchange, shell only
+- [ ] **Per-item shell validity capture (month + year)**:
+  - `delivered_shell_expires_at` (validity stamped on the shell the customer LEAVES with) is required for all three modalities — full, exchange, shell only
+  - `returned_shell_expires_at` (validity stamped on the shell the customer BROUGHT BACK) is required only for the exchange modality
+  - UI shows a month-only picker (display `m/Y`, stored as the first day of the month)
 - [ ] Separate stock counters for filled gallon vs. empty shell
 - [ ] Global toggle "Per-customer shell tracking" (default off)
 - [ ] When enabled: records customer × shell × out-date + 3-year expiry alert
@@ -651,7 +655,10 @@ erDiagram
         bigint variant_id FK
         int quantity
         decimal unit_price
+        decimal line_total
         string modality
+        date returned_shell_expires_at
+        date delivered_shell_expires_at
     }
     DELIVERY {
         bigint id PK
@@ -1073,3 +1080,4 @@ gantt
 | 1.1.0 | 2026-05-09 | Anderson de Oliveira Venturini | Resolved 10 open questions: operational config (2km radius, fees, building), VPS, Google Drive backup (F15 — new MVP), 2-way Google Contacts sync (F16 — new MVP), XLSX seeder (F14 — new MVP), dual password reset. Out-of-area extra fee is now EDITABLE at sale time only for out-of-area customers. Renamed `out_of_area_fee` → `out_of_area_extra_fee` in the data model |
 | 1.2.0 | 2026-05-09 | Anderson de Oliveira Venturini | Full translation to English (project documentation language requirement). Resolved questions 11–13: Oracle Cloud Always-Free hosting, Gmail SMTP for transactional email, dedicated Google account `fa.distribuidora.sistema@gmail.com`. Added technical risks for Oracle Free Tier (idle reclaim, ARM64 images) and Gmail SMTP (daily limit). New open questions 15–17 (Oracle region, domain, monthly backup retention) |
 | 1.3.0 | 2026-05-11 | Anderson de Oliveira Venturini | Resolved question 16: domain name is **<https://fa.andersonventurini.cloud>**, provisioned on the maintainer's existing `andersonventurini.cloud` zone. The address currently serves the **testing environment** and will be reused for production at M7. Added a dedicated "Environments" subsection in section 5 and a staging-URL row in the Confirmed Baseline Configuration. Header gains a `Staging / testing URL` field |
+| 1.4.0 | 2026-05-11 | Anderson de Oliveira Venturini | F04 gains **per-item shell validity capture**: each `SaleItem` for a returnable variant stores `delivered_shell_expires_at` (month/year of the shell the customer takes — required for full / exchange / shell-only) and `returned_shell_expires_at` (month/year of the shell the customer brings back — required only for exchange). Stored as `DATE` (first day of the month), displayed as `m/Y`. ERD updated. Triggered alongside the implementation of F07 (Customer registry with phones + addresses) and F09 (Sale registration with items repeater) plus the purchase-history view as a Sales relation manager under Customer |
