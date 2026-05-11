@@ -1,11 +1,12 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.2.0
+> **Version**: 1.3.0
 > **Status**: Draft
 > **Created**: 2026-05-09
-> **Last Updated**: 2026-05-09
+> **Last Updated**: 2026-05-11
 > **Author**: Anderson de Oliveira Venturini
 > **Customer**: FA Distribuidora — Water · Beverages · Charcoal (Av. Transamazônica, 1197 — Jardim Garcia, Campinas-SP, Brazil)
+> **Staging / testing URL**: <https://fa.andersonventurini.cloud>
 
 ---
 
@@ -20,6 +21,7 @@ Values and decisions consolidated after the requirements clarification round wit
 | Out-of-area extra fee | **+R$ 1.00** on top of the default fee, **editable by the attendant at sale time** — only for out-of-area customers |
 | Building extra fee | **R$ 1.00** (configurable) |
 | Hosting | **Oracle Cloud Always-Free Tier** (Ampere ARM A1 instance) |
+| Staging / testing URL | **<https://fa.andersonventurini.cloud>** — live deployment on Oracle Cloud, currently used as the testing environment until production go-live (M7) |
 | Off-site backup | **Automated** — system uploads daily MySQL dump to a dedicated Google Drive folder |
 | Receipt / printing | USB thermal printer 80mm as the **standard target (optional, does NOT block MVP)**; system must be ready to issue receipt cupons; **NFC-e fiscal receipts deferred to a future version** |
 | Password reset | Manager resets manually **+** standard Laravel email-based reset (both available) |
@@ -476,6 +478,15 @@ graph TB
     App -.-> SMTP
     Browser -.-> Print
 ```
+
+### Environments
+
+| Environment | URL | Purpose | Hardware / runtime |
+|-------------|-----|---------|--------------------|
+| Local development | <http://localhost:8765> (Laravel Sail) | Maintainer's machine — daily development and Pest test runs | Docker Desktop on Windows / WSL2 |
+| Staging / testing | **<https://fa.andersonventurini.cloud>** | Live deployment used as the **testing environment** until production go-live (M7). The same instance will host production from M7 onward — only its operational status changes | Oracle Cloud Always-Free Tier · Ampere A1 (ARM64) · Docker Compose · Apache 2.4 · MySQL 8 |
+
+Both environments share the same schema, migrations and `ProductCatalogSeeder`. Operational data (real customers, sales, deliveries) does **not** flow between them: staging may be wiped and re-seeded at any time without coordination.
 
 ### Stack
 
@@ -1012,7 +1023,7 @@ gantt
 | 13 | Google account for Drive + Contacts + SMTP | **Create a dedicated account** (e.g. `fa.distribuidora.sistema@gmail.com`). Manager creates before M3 | **Resolved** (2026-05-09) |
 | 14 | Google Contacts label/group name | "FA Distribuidora" (default; configurable) | Recommendation |
 | 15 | Oracle Cloud region (Brazil East / São Paulo? Vinhedo?) | Pending — pick the closest region with Always-Free quota | Open — Anderson, before M1 |
-| 16 | Domain name for the system (Apache vhost) | Pending — pick whether to use a real domain (e.g. `sistema.fadistribuidora.com.br`) or just IP + Let's Encrypt | Open — Anderson + Manager FA, before M7 |
+| 16 | Domain name for the system (Apache vhost) | **<https://fa.andersonventurini.cloud>** — provisioned on the maintainer's `andersonventurini.cloud` zone, currently serving the testing environment and to be reused for production at M7 | **Resolved** (2026-05-11) |
 | 17 | Backup retention beyond 30 days (monthly archive?) | Pending — decide whether to keep monthly archives indefinitely or only the rolling 30 daily backups | Open — Anderson + Manager FA, before M6 |
 
 ---
@@ -1061,3 +1072,4 @@ gantt
 | 1.0.0 | 2026-05-09 | Anderson de Oliveira Venturini | Initial version — consolidated the requirements doc + brand identity into PRD format |
 | 1.1.0 | 2026-05-09 | Anderson de Oliveira Venturini | Resolved 10 open questions: operational config (2km radius, fees, building), VPS, Google Drive backup (F15 — new MVP), 2-way Google Contacts sync (F16 — new MVP), XLSX seeder (F14 — new MVP), dual password reset. Out-of-area extra fee is now EDITABLE at sale time only for out-of-area customers. Renamed `out_of_area_fee` → `out_of_area_extra_fee` in the data model |
 | 1.2.0 | 2026-05-09 | Anderson de Oliveira Venturini | Full translation to English (project documentation language requirement). Resolved questions 11–13: Oracle Cloud Always-Free hosting, Gmail SMTP for transactional email, dedicated Google account `fa.distribuidora.sistema@gmail.com`. Added technical risks for Oracle Free Tier (idle reclaim, ARM64 images) and Gmail SMTP (daily limit). New open questions 15–17 (Oracle region, domain, monthly backup retention) |
+| 1.3.0 | 2026-05-11 | Anderson de Oliveira Venturini | Resolved question 16: domain name is **<https://fa.andersonventurini.cloud>**, provisioned on the maintainer's existing `andersonventurini.cloud` zone. The address currently serves the **testing environment** and will be reused for production at M7. Added a dedicated "Environments" subsection in section 5 and a staging-URL row in the Confirmed Baseline Configuration. Header gains a `Staging / testing URL` field |
