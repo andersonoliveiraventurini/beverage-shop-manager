@@ -27,9 +27,21 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->id('admin')
             ->path('admin')
+            ->brandName('FA Distribuidora')
+            ->brandLogo(asset('images/fa-logo.svg'))
+            ->darkModeBrandLogo(asset('images/fa-logo.svg'))
+            ->brandLogoHeight('2.25rem')
+            ->favicon(asset('favicon.svg'))
+            ->viteTheme('resources/css/filament/admin/theme.css')
+            ->font('Inter')
             ->login()
             ->colors([
-                'primary' => Color::Amber,
+                'primary' => Color::hex('#0B3D91'),
+                'info' => Color::hex('#3FA9F5'),
+                'warning' => Color::hex('#F7C948'),
+                'danger' => Color::Red,
+                'success' => Color::Emerald,
+                'gray' => Color::Slate,
             ])
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')

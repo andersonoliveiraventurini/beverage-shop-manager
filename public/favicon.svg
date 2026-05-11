@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 80">
+  <circle cx="40" cy="40" r="36" fill="#0B3D91"/>
+  <ellipse cx="40" cy="56" rx="20" ry="3" fill="#3FA9F5" opacity="0.35"/>
+  <text x="40" y="52" text-anchor="middle" fill="#FFFFFF" font-family="'Archivo Black', 'Inter', sans-serif" font-weight="900" font-size="34">FA</text>
+  <path d="M30.4 18.5 c-2.6 3.6 -4 6.6 -4 8.7 0 2.4 1.8 4.3 4 4.3 2.2 0 4 -1.9 4 -4.3 0 -2.1 -1.4 -5.1 -4 -8.7 z" fill="#F7C948"/>
+</svg>

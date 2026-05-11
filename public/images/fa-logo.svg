@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 80" role="img" aria-label="FA Distribuidora">
+  <defs>
+    <style>
+      .brand-blue { fill: #0B3D91; }
+      .brand-yellow { fill: #F7C948; }
+      .brand-stroke { stroke: #0B3D91; stroke-width: 3; fill: #FFFFFF; }
+      .water-shadow { fill: #3FA9F5; opacity: 0.18; }
+      .lockup-display { font-family: 'Archivo Black', 'Inter', sans-serif; font-weight: 900; }
+      .lockup-tag { font-family: 'Inter', sans-serif; font-weight: 800; letter-spacing: 0.18em; }
+    </style>
+  </defs>
+
+  <g transform="translate(8 8)">
+    <circle cx="32" cy="32" r="30" class="brand-stroke"/>
+    <ellipse cx="32" cy="48" rx="20" ry="3.5" class="water-shadow"/>
+    <text x="32" y="44" text-anchor="middle" class="brand-blue lockup-display" font-size="32">FA</text>
+    <path d="M22.4 12.5 c-2.6 3.6 -4 6.6 -4 8.7 0 2.4 1.8 4.3 4 4.3 2.2 0 4 -1.9 4 -4.3 0 -2.1 -1.4 -5.1 -4 -8.7 z" class="brand-yellow"/>
+  </g>
+
+  <g transform="translate(86 0)">
+    <text x="0" y="38" class="brand-blue lockup-display" font-size="28">FA DISTRIBUIDORA</text>
+    <text x="2" y="60" class="brand-blue lockup-tag" font-size="11">ÁGUA · BEBIDAS · CARVÃO</text>
+  </g>
+</svg>
