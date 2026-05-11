@@ -35,4 +35,27 @@ class ProductVariant extends Model
     {
         return $this->belongsTo(Product::class);
     }
+
+    public function stockMovements()
+    {
+        return $this->hasMany(StockMovement::class, 'variant_id');
+    }
+
+    /**
+     * Live stock balance derived from the stock_movements table.
+     * IN movements add, OUT movements subtract. No cargo support yet — initial
+     * stock must be entered as a 'manual_adjust' IN movement.
+     */
+    public function getCurrentStockAttribute(): int
+    {
+        return (int) (
+            (int) $this->stockMovements()->where('direction', 'in')->sum('quantity')
+            - (int) $this->stockMovements()->where('direction', 'out')->sum('quantity')
+        );
+    }
+
+    public function isLowStock(): bool
+    {
+        return $this->current_stock < (int) $this->min_stock;
+    }
 }

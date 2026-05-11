@@ -120,6 +120,14 @@ class VariantsRelationManager extends RelationManager
                     ->label('Retornável')
                     ->boolean(),
 
+                TextColumn::make('current_stock')
+                    ->label('Estoque')
+                    ->numeric()
+                    ->alignCenter()
+                    ->color(fn ($state, $record) => $record->isLowStock() ? 'danger' : 'success')
+                    ->weight(fn ($state, $record) => $record->isLowStock() ? 'bold' : null)
+                    ->tooltip(fn ($record) => 'Mínimo: ' . $record->min_stock),
+
                 TextColumn::make('sale_price')
                     ->label('Venda')
                     ->money('BRL')

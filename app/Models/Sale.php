@@ -47,6 +47,7 @@ class Sale extends Model
         'discount_reason',
         'total',
         'contains_water',
+        'stock_settled',
         'notes',
         'paid_at',
     ];
@@ -60,6 +61,7 @@ class Sale extends Model
         'discount' => 'decimal:2',
         'total' => 'decimal:2',
         'contains_water' => 'boolean',
+        'stock_settled' => 'boolean',
         'paid_at' => 'datetime',
     ];
 
@@ -73,6 +75,103 @@ class Sale extends Model
                 + (float) $sale->card_fee
                 - (float) $sale->discount), 2);
         });
+
+        static::saved(function (Sale $sale): void {
+            // Settle (decrement) stock when a sale becomes 'confirmed'.
+            // Guarded by items existing — the Filament create flow saves Sale before items.
+            if ($sale->status === self::STATUS_CONFIRMED && $sale->items()->exists()) {
+                $sale->settleStock();
+            }
+            // Reverse stock when a sale is moved to 'cancelled'. Driven by actual OUT
+            // movements (not the in-memory stock_settled flag, which can be stale
+            // because the test/UI may hold a sale instance whose flag was flipped via
+            // a different model instance).
+            if ($sale->status === self::STATUS_CANCELLED) {
+                $sale->reverseStock();
+            }
+        });
+    }
+
+    /**
+     * Create an OUT movement for every item that does not yet have one.
+     * Idempotent: re-running does not create duplicates.
+     */
+    public function settleStock(): void
+    {
+        $this->loadMissing('items');
+        foreach ($this->items as $item) {
+            $exists = \App\Models\StockMovement::query()
+                ->where('source_type', \App\Models\SaleItem::class)
+                ->where('source_id', $item->id)
+                ->where('direction', \App\Models\StockMovement::DIRECTION_OUT)
+                ->where('reason', \App\Models\StockMovement::REASON_SALE)
+                ->exists();
+            if ($exists) {
+                continue;
+            }
+            \App\Models\StockMovement::create([
+                'variant_id' => $item->variant_id,
+                'direction' => \App\Models\StockMovement::DIRECTION_OUT,
+                'reason' => \App\Models\StockMovement::REASON_SALE,
+                'quantity' => (int) $item->quantity,
+                'source_type' => \App\Models\SaleItem::class,
+                'source_id' => $item->id,
+                'user_id' => $this->user_id,
+            ]);
+        }
+        if (! $this->stock_settled) {
+            $this->stock_settled = true;
+            $this->saveQuietly();
+        }
+    }
+
+    /**
+     * Reverse every unreversed OUT movement for this sale's items.
+     * Driven by the actual movement table (not the stock_settled flag) so it's
+     * safe to call from a stale model instance. Idempotent.
+     */
+    public function reverseStock(): void
+    {
+        $this->loadMissing('items');
+        $hadAnyOut = false;
+        foreach ($this->items as $item) {
+            $out = \App\Models\StockMovement::query()
+                ->where('source_type', \App\Models\SaleItem::class)
+                ->where('source_id', $item->id)
+                ->where('direction', \App\Models\StockMovement::DIRECTION_OUT)
+                ->where('reason', \App\Models\StockMovement::REASON_SALE)
+                ->first();
+            if (! $out) {
+                continue;
+            }
+            $hadAnyOut = true;
+
+            $alreadyReversed = \App\Models\StockMovement::query()
+                ->where('source_type', \App\Models\SaleItem::class)
+                ->where('source_id', $item->id)
+                ->where('direction', \App\Models\StockMovement::DIRECTION_IN)
+                ->where('reason', \App\Models\StockMovement::REASON_SALE_REVERSAL)
+                ->exists();
+            if ($alreadyReversed) {
+                continue;
+            }
+
+            \App\Models\StockMovement::create([
+                'variant_id' => $item->variant_id,
+                'direction' => \App\Models\StockMovement::DIRECTION_IN,
+                'reason' => \App\Models\StockMovement::REASON_SALE_REVERSAL,
+                'quantity' => (int) $out->quantity,
+                'source_type' => \App\Models\SaleItem::class,
+                'source_id' => $item->id,
+                'user_id' => $this->user_id,
+            ]);
+        }
+
+        if ($hadAnyOut) {
+            // Flip the flag from whatever DB has — fresh read avoids stale-instance issues.
+            \App\Models\Sale::query()->whereKey($this->id)->update(['stock_settled' => false]);
+            $this->stock_settled = false;
+        }
     }
 
     /**
