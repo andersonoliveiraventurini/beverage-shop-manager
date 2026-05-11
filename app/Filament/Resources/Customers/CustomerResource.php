@@ -10,6 +10,7 @@ use App\Filament\Resources\Customers\Pages\ListCustomers;
 use App\Filament\Resources\Customers\RelationManagers\AddressesRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\PhonesRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\SalesRelationManager;
+use App\Filament\Resources\Customers\RelationManagers\WaterShellsRelationManager;
 use App\Filament\Resources\Customers\Schemas\CustomerForm;
 use App\Filament\Resources\Customers\Tables\CustomersTable;
 use App\Models\Customer;
@@ -55,6 +56,7 @@ class CustomerResource extends Resource
             PhonesRelationManager::class,
             AddressesRelationManager::class,
             SalesRelationManager::class,
+            WaterShellsRelationManager::class,
         ];
     }
 

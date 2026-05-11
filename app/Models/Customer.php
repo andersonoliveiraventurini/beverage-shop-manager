@@ -57,4 +57,9 @@ class Customer extends Model
     {
         return $this->hasMany(Sale::class);
     }
+
+    public function waterShells(): HasMany
+    {
+        return $this->hasMany(WaterShellLedger::class);
+    }
 }

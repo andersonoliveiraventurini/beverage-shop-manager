@@ -68,5 +68,5 @@ it('renders the Phones relation manager and creates a phone', function () {
 it('exposes the resource navigation metadata', function () {
     expect(CustomerResource::getNavigationLabel())->toBe('Clientes')
         ->and(CustomerResource::getNavigationGroup())->toBe('Operação')
-        ->and(CustomerResource::getRelations())->toHaveCount(3);
+        ->and(CustomerResource::getRelations())->toHaveCount(4);
 });

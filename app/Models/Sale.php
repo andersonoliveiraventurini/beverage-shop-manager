@@ -99,6 +99,8 @@ class Sale extends Model
     public function settleStock(): void
     {
         $this->loadMissing('items');
+        $itemsSettledNow = collect();
+
         foreach ($this->items as $item) {
             $exists = \App\Models\StockMovement::query()
                 ->where('source_type', \App\Models\SaleItem::class)
@@ -118,10 +120,17 @@ class Sale extends Model
                 'source_id' => $item->id,
                 'user_id' => $this->user_id,
             ]);
+            $itemsSettledNow->push($item);
         }
         if (! $this->stock_settled) {
             $this->stock_settled = true;
             $this->saveQuietly();
+        }
+
+        // Only sync the shell ledger for items that were freshly settled this call.
+        // Re-running settleStock on an already-settled sale must be a no-op.
+        if ($itemsSettledNow->isNotEmpty()) {
+            $this->syncShellLedger(direction: 'out', onlyItems: $itemsSettledNow);
         }
     }
 
@@ -133,7 +142,8 @@ class Sale extends Model
     public function reverseStock(): void
     {
         $this->loadMissing('items');
-        $hadAnyOut = false;
+        $itemsReversedNow = collect();
+
         foreach ($this->items as $item) {
             $out = \App\Models\StockMovement::query()
                 ->where('source_type', \App\Models\SaleItem::class)
@@ -144,7 +154,6 @@ class Sale extends Model
             if (! $out) {
                 continue;
             }
-            $hadAnyOut = true;
 
             $alreadyReversed = \App\Models\StockMovement::query()
                 ->where('source_type', \App\Models\SaleItem::class)
@@ -165,13 +174,85 @@ class Sale extends Model
                 'source_id' => $item->id,
                 'user_id' => $this->user_id,
             ]);
+            $itemsReversedNow->push($item);
         }
 
-        if ($hadAnyOut) {
+        if ($itemsReversedNow->isNotEmpty()) {
             // Flip the flag from whatever DB has — fresh read avoids stale-instance issues.
             \App\Models\Sale::query()->whereKey($this->id)->update(['stock_settled' => false]);
             $this->stock_settled = false;
+
+            $this->syncShellLedger(direction: 'in', onlyItems: $itemsReversedNow);
         }
+    }
+
+    /**
+     * Adjust the per-customer water shell ledger for every returnable item.
+     *
+     * direction='out' — the customer is taking shells from us:
+     *   - full | shell_only:  +qty at delivered_shell_expires_at
+     *   - exchange:           -qty at returned_shell_expires_at (they handed one back)
+     *                          +qty at delivered_shell_expires_at
+     *
+     * direction='in' — the sale is being cancelled, so we undo the above.
+     *
+     * No-op when the global toggle is off, when the sale has no customer (counter
+     * sale to walk-in), or when the item is not returnable.
+     */
+    public function syncShellLedger(string $direction, ?\Illuminate\Support\Collection $onlyItems = null): void
+    {
+        if (! \App\Models\DeliverySetting::trackingShells()) {
+            return;
+        }
+        if (! $this->customer_id) {
+            return;
+        }
+
+        $this->loadMissing(['items.variant']);
+        $items = $onlyItems ?? $this->items;
+        $sign = $direction === 'out' ? 1 : -1;
+
+        foreach ($items as $item) {
+            $item->loadMissing('variant');
+            if (! optional($item->variant)->is_returnable) {
+                continue;
+            }
+
+            $qty = (int) $item->quantity;
+
+            match ($item->modality) {
+                \App\Models\SaleItem::MODALITY_FULL,
+                \App\Models\SaleItem::MODALITY_SHELL_ONLY => $this->bumpLedger(
+                    $item->variant_id,
+                    $item->delivered_shell_expires_at,
+                    $sign * $qty,
+                ),
+                \App\Models\SaleItem::MODALITY_EXCHANGE => (function () use ($item, $sign, $qty) {
+                    $this->bumpLedger($item->variant_id, $item->delivered_shell_expires_at, $sign * $qty);
+                    $this->bumpLedger($item->variant_id, $item->returned_shell_expires_at, -$sign * $qty);
+                })(),
+                default => null,
+            };
+        }
+    }
+
+    private function bumpLedger(int $variantId, $expiresAt, int $delta): void
+    {
+        if (! $expiresAt || $delta === 0) {
+            return;
+        }
+
+        $entry = \App\Models\WaterShellLedger::firstOrNew([
+            'customer_id' => $this->customer_id,
+            'variant_id' => $variantId,
+            'expires_at' => $expiresAt,
+        ]);
+
+        $entry->shell_count = max(0, ((int) $entry->shell_count) + $delta);
+        if ($delta > 0) {
+            $entry->last_out_at = now();
+        }
+        $entry->save();
     }
 
     /**
