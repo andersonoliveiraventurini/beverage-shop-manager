@@ -1,12 +1,13 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.4.0
-> **Status**: Draft
+> **Version**: 1.5.0
+> **Status**: Draft — Implementation in progress
 > **Created**: 2026-05-09
-> **Last Updated**: 2026-05-11
+> **Last Updated**: 2026-05-18
 > **Author**: Anderson de Oliveira Venturini
 > **Customer**: FA Distribuidora — Water · Beverages · Charcoal (Av. Transamazônica, 1197 — Jardim Garcia, Campinas-SP, Brazil)
 > **Staging / testing URL**: <https://fa.andersonventurini.cloud>
+> **Implementation plan**: see [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md)
 
 ---
 
@@ -30,6 +31,42 @@ Values and decisions consolidated after the requirements clarification round wit
 | Default lead time (purchase forecast P1) | Configurable per supplier, **default 1 day** (most suppliers deliver next day) |
 | Email transactional service | **Gmail SMTP** using the dedicated FA Google account |
 | Dedicated Google account | `fa.distribuidora.sistema@gmail.com` (or similar) — owns Drive backup folder, Contacts sync, and SMTP |
+
+---
+
+## Implementation Status
+
+Snapshot of the codebase against the MVP feature list (last audited **2026-05-18**). Detailed per-criterion checkboxes live inside each feature in **section 4**.
+
+| Feature | Title | Status | Notes |
+|---|---|---|---|
+| F01 | Depot Configuration | ⛔ Not started | No `Store` model / page yet |
+| F02 | Delivery Configuration | 🟡 Partial (~60%) | Settings page persists radius / fees / shell-tracking toggle. **Missing**: "Recompute customer fees" action + change history |
+| F03 | Product Catalog with Variants | ✅ Done (~95%) | Filament resources for Category, Product, Variant. Unique SKU, soft-delete, search. **Missing**: visual warning when `sale_price < cost_price` |
+| F04 | Returnable Water Shells | ✅ Done | 3 modalities + per-item validity (month picker) + per-customer ledger + tracking toggle + near-expiry widget + dedicated `WaterShellLedger` resource |
+| F05 | Cargo / Stock-In | ⛔ Not started | Stock is bootstrapped via raw `manual_adjust` IN movements; no Cargo model, no weighted-average cost |
+| F06 | Stock and Expiry Control | 🟡 Partial (~50%) | Real-time stock balance + `min_stock` + movement audit log + shell near-expiry widget. **Missing**: configurable near-expiry threshold for cargo-driven product expiry, expired-products list with manual write-off |
+| F07 | Customer Registry with Per-Customer Fees | 🟡 Partial (~85%) | Customers, multiple phones / addresses (incl. lat/lng/`is_building`), `delivery_fee` / `building_fee` / `has_manual_fee_override` / `in_delivery_area` / `distance_km`. **Missing**: search by phone, auto-fill of fees from settings |
+| F08 | Customer Purchase History | 🟡 Partial (~75%) | Reverse-chronological list with filters by payment / status / contains_water. **Missing**: total-spent-in-period KPI, recurring-product detection |
+| F09 | Sale Registration | 🟡 Partial (~80%) | Sale CRUD, repeater with returnable-modality logic, payment method, card fee, manual discount with reason, snapshot persisted, settle-stock cascade (locked by regression test 822caf8). **Missing**: out-of-area edit gated by `in_delivery_area`, manager-only price override + audit log, printable receipt |
+| F10 | Customer Fee Assignment | 🟡 Partial (~25%) | Columns exist; the sale already snapshots. **Missing**: compute service (in-area vs out-of-area + building), Nominatim geocoding, "auto / manual / last-computed" indicators on customer screen |
+| F11 | Daily Delivery Dispatch Board | ⛔ Not started | No `Delivery` model, no board page |
+| F12 | Separated Listings — Water vs General | ⛔ Not started | Single `SaleResource` listing; `contains_water` filter exists in relation manager but no dedicated water / general pages, no CSV/XLSX export |
+| F13 | Consolidated Admin Dashboard | ⛔ Not started | Only the `ExpiringShells` stats widget exists |
+| F14 | Initial Catalog Seeder | ✅ Done (deviation) | `database/seeders/ProductCatalogSeeder.php` hard-codes the 19-category catalog (transcribed from `produtos-deposito.xlsx`) idempotently via `firstOrCreate` + `updateOrCreate` by SKU. No runtime XLSX dependency. See **Deviations** below |
+| F15 | Automated Backup to Google Drive | ⛔ Not started | — |
+| F16 | Two-Way Sync with Google Contacts | ⛔ Not started | `customers.google_contact_id` and `customers.google_synced_at` columns exist; no sync service |
+
+**Cross-cutting items not yet started**: role-based access (`manager` / `attendant` / `deliverer`), Laravel password reset wiring, depot-config receipt header, printable receipt, audit log for sensitive overrides.
+
+**Quantitative summary**: ~40% of the MVP scope is complete. Six of sixteen features are at zero. The biggest single remaining surface is sales reporting (F12 + F13) and the customer-fee computation pipeline (F10).
+
+### Deviations from PRD
+
+| ID | Decision | Why |
+|----|----------|-----|
+| F14 | Hard-coded curated catalog seeder instead of runtime XLSX read | The catalog is short (~150 SKUs), changes rarely, benefits from being in version control, and removing the `maatwebsite/excel` dependency keeps the ARM64 Docker image smaller. All other F14 acceptance criteria (idempotency, dedup by SKU, single Artisan command) are still met |
+| F02 | Delivery settings UI live in Portuguese | Project policy is "code in English, UI in pt-BR" (see section 5 *Stack*) — only the UI strings are localized; identifiers, table names, and code remain English |
 
 ---
 
@@ -172,10 +209,10 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to adjust the default fee and propagate it to every customer (except those with special pricing) without editing them one by one.
 
 **Acceptance criteria**:
-- [ ] Edit radius, default fee, out-of-area extra fee and building extra fee
+- [x] Edit radius, default fee, out-of-area extra fee and building extra fee — `Settings` page persists to the `delivery_settings` singleton
 - [ ] "Recompute customer fees" button preserves manual overrides
 - [ ] Change history tracked with timestamp and user
-- [ ] Past sales keep the values that were in force on the sale date
+- [x] Past sales keep the values that were in force on the sale date — sales snapshot `subtotal`, `delivery_fee`, `building_fee`, `out_of_area_override`, `card_fee`, `discount`, `total`
 
 ---
 
@@ -186,10 +223,10 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to register products with size/packaging variants so each SKU has its own price and stock.
 
 **Acceptance criteria**:
-- [ ] Hierarchy Category → Product → Variant
-- [ ] Unique SKU per variant
-- [ ] Soft-delete (deactivate without losing history)
-- [ ] Search by name, SKU or category
+- [x] Hierarchy Category → Product → Variant — `Category`, `Product`, `ProductVariant` models + Filament resources
+- [x] Unique SKU per variant — `product_variants.sku` has a unique index
+- [x] Soft-delete (deactivate without losing history) — `SoftDeletes` trait on `ProductVariant`, `Customer`, `Sale`
+- [x] Search by name, SKU or category — `CategoryResource` and `ProductResource` tables have searchable columns
 - [ ] Visual warning when sale price < cost price
 
 ---
@@ -201,16 +238,16 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As an attendant, I want to register the correct gallon modality so the stock of filled gallons and empty shells stays accurate.
 
 **Acceptance criteria**:
-- [ ] Flag 10L/20L variants as returnable + register shell value
-- [ ] 3 modalities at sale time: full load, exchange, shell only
-- [ ] **Per-item shell validity capture (month + year)**:
+- [x] Flag 10L/20L variants as returnable + register shell value — `product_variants.is_returnable` + `shell_cost`
+- [x] 3 modalities at sale time: full load, exchange, shell only — `SaleItem::MODALITIES`
+- [x] **Per-item shell validity capture (month + year)**:
   - `delivered_shell_expires_at` (validity stamped on the shell the customer LEAVES with) is required for all three modalities — full, exchange, shell only
   - `returned_shell_expires_at` (validity stamped on the shell the customer BROUGHT BACK) is required only for the exchange modality
   - UI shows a month-only picker (display `m/Y`, stored as the first day of the month)
-- [ ] Separate stock counters for filled gallon vs. empty shell
-- [ ] Global toggle "Per-customer shell tracking" (default off)
-- [ ] When enabled: records customer × shell × out-date + 3-year expiry alert
-- [ ] Shells-in-circulation report (only when tracking is enabled)
+- [ ] Separate stock counters for filled gallon vs. empty shell — only filled-gallon stock is tracked today; empty-shell stock relies on the per-customer ledger
+- [x] Global toggle "Per-customer shell tracking" (default off) — `delivery_settings.track_water_shells`
+- [x] When enabled: records customer × shell × out-date + 3-year expiry alert — `WaterShellLedger` + `ExpiringShells` widget
+- [x] Shells-in-circulation report (only when tracking is enabled) — `WaterShellLedgerResource` list page
 
 ---
 
@@ -235,11 +272,11 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to be warned when a product is running out or about to expire so I can restock or rotate before losing money.
 
 **Acceptance criteria**:
-- [ ] Real-time stock balance
-- [ ] Configurable minimum stock per product
-- [ ] Near-expiry alert (default 30 days, configurable)
+- [x] Real-time stock balance — `ProductVariant::current_stock` derived from `stock_movements`
+- [x] Configurable minimum stock per product — `product_variants.min_stock`
+- [ ] Near-expiry alert (default 30 days, configurable) — only the **shell** widget is implemented; product-batch near-expiry depends on F05 (Cargo) landing
 - [ ] Expired products list with manual write-off
-- [ ] Full per-product movement history
+- [x] Full per-product movement history — `StockMovementResource` lists every IN/OUT/SALE/SALE_REVERSAL/MANUAL_ADJUST row with morph source
 
 ---
 
@@ -250,12 +287,12 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As an attendant, I want to register a customer once so every future sale comes pre-filled with the correct fee without me having to remember it.
 
 **Acceptance criteria**:
-- [ ] Multiple phones and addresses per customer
-- [ ] Address fields: street, number, complement, district, city, ZIP, lat, lng, `is_building`, reference
-- [ ] Customer stores `delivery_fee`, `building_fee`, `has_manual_fee_override`, `in_delivery_area`
-- [ ] Distance in km to depot (informational)
-- [ ] Manual override flags the customer and protects it from bulk recompute
-- [ ] Search by name, phone or document
+- [x] Multiple phones and addresses per customer — `CustomerPhone`, `CustomerAddress`, both as Filament relation managers
+- [x] Address fields: street, number, complement, district, city, ZIP, lat, lng, `is_building`, reference — `customer_addresses` migration matches one-to-one
+- [x] Customer stores `delivery_fee`, `building_fee`, `has_manual_fee_override`, `in_delivery_area`
+- [x] Distance in km to depot (informational) — `customers.distance_km`
+- [⚠️] Manual override flags the customer and protects it from bulk recompute — column exists; bulk recompute itself (F02) is still pending
+- [⚠️] Search by name, phone or document — name and document are searchable; **phone search not yet wired**
 
 ---
 
@@ -266,8 +303,8 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As an attendant, I want to see what a customer usually buys so I can suggest items and save time.
 
 **Acceptance criteria**:
-- [ ] Reverse-chronological listing
-- [ ] Filters by period, product, status
+- [x] Reverse-chronological listing — `SalesRelationManager` on `CustomerResource` defaults to `created_at desc`
+- [⚠️] Filters by period, product, status — payment / status / `contains_water` filters live; **per-period date filter not yet added**; **per-product filter pending**
 - [ ] Total spent in the selected period
 - [ ] Recurring-product detection
 
@@ -280,16 +317,16 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As an attendant, I want to register a sale in a few clicks so I can serve customers faster without errors.
 
 **Acceptance criteria**:
-- [ ] Multiple items, qty editable; price editable only by manager (or with explicit authorization)
-- [ ] Returnable gallons (10L/20L) require modality selection before confirm
-- [ ] Picking a customer for delivery shows pre-resolved `delivery_fee` + `building_fee`
-- [ ] Payment method is mandatory
-- [ ] When payment method is card: optional "Card fee" (R$) field that adds to the total
-- [ ] **Attendant may edit the out-of-area extra fee at sale time ONLY for out-of-area customers** (field disabled for in-area customers). Edits are recorded in the sale snapshot and in the audit log
+- [⚠️] Multiple items, qty editable; price editable only by manager (or with explicit authorization) — items + qty work; **manager-only price gating not yet enforced**
+- [x] Returnable gallons (10L/20L) require modality selection before confirm — `SaleForm` requires `modality` when `variant.is_returnable`
+- [x] Picking a customer for delivery shows pre-resolved `delivery_fee` + `building_fee` — `customer_id::afterStateUpdated` callback
+- [x] Payment method is mandatory — required select; one of `cash / pix / debit / credit`
+- [x] When payment method is card: optional "Card fee" (R$) field that adds to the total — visible only when payment is `debit` or `credit`
+- [⚠️] **Attendant may edit the out-of-area extra fee at sale time ONLY for out-of-area customers** (field disabled for in-area customers). Edits are recorded in the sale snapshot and in the audit log — column `out_of_area_override` exists; **visibility gating + audit log entry pending**
 - [ ] Manual adjustment of `delivery_fee` / `building_fee` outside that exception requires manager authorization and creates an audit log entry
-- [ ] Manual discount with required reason
+- [x] Manual discount with required reason — `discount` + `discount_reason` (required when discount > 0)
 - [ ] Printable receipt showing subtotal, delivery fee, building extra, card fee, discount, total
-- [ ] Snapshot keeps the historical totals intact even if the customer is edited later
+- [x] Snapshot keeps the historical totals intact even if the customer is edited later — `sales` migration stores frozen `subtotal`, `delivery_fee`, `building_fee`, `out_of_area_override`, `card_fee`, `discount`, `total`
 
 ---
 
@@ -303,9 +340,9 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 - [ ] Automatic compute on customer create/edit
 - [ ] Inside radius → `delivery_fee` = default; outside radius → `delivery_fee` = default + out-of-area extra
 - [ ] Building customer → add building extra
-- [ ] Manual override sets `has_manual_fee_override = true`
-- [ ] Customer detail screen shows distance, fees, source (auto/manual), last computation date
-- [ ] The sale never recomputes (except the F09 out-of-area exception)
+- [⚠️] Manual override sets `has_manual_fee_override = true` — column exists, but the form has no toggle yet
+- [⚠️] Customer detail screen shows distance, fees, source (auto/manual), last computation date — `distance_km`, `delivery_fee`, `building_fee`, `has_manual_fee_override`, `fees_calculated_at` all persisted; **infolist with all four still pending**
+- [x] The sale never recomputes (except the F09 out-of-area exception) — confirmed: `Sale::saving` recomputes `total` from snapshot fields, never re-reads customer
 
 ---
 
@@ -363,12 +400,12 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 
 **Story**: As a manager, I do not want to register 50+ products one by one — the system reads the spreadsheet I already have and creates everything.
 
-**Acceptance criteria**:
-- [ ] `php artisan db:seed --class=ProductCatalogSeeder` reads `produtos-deposito.xlsx`
-- [ ] Creates categories on demand, deduplicates by SKU
-- [ ] Per-row error reporting without aborting the whole run
-- [ ] Idempotent: running twice does not create duplicates
-- [ ] Dependency: `maatwebsite/excel` (or `phpoffice/phpspreadsheet`)
+**Acceptance criteria** (revised — see *Deviations* in Implementation Status):
+- [x] `php artisan db:seed --class=ProductCatalogSeeder` populates the full catalog — reads from a hard-coded curated array transcribed from `produtos-deposito.xlsx`
+- [x] Creates categories on demand, deduplicates by SKU — `firstOrCreate` on category slug, `updateOrCreate` on variant SKU
+- [x] Idempotent: running twice does not create duplicates — covered by `tests/Feature/Database/ProductCatalogSeederTest.php::it runs idempotently when seeded twice`
+- [ ] ~~Per-row error reporting without aborting the whole run~~ — not applicable to the curated-array approach (no parse errors possible)
+- [ ] ~~Dependency: `maatwebsite/excel` (or `phpoffice/phpspreadsheet`)~~ — intentionally dropped; see *Deviations*
 
 ---
 
@@ -999,15 +1036,15 @@ gantt
 
 ### Milestones
 
-| Milestone | Deliverable | Target date |
-|-----------|-------------|-------------|
-| M1: Foundation ready | Login, roles, settings, staging deploy on Oracle Free Tier | 2026-05-22 |
-| M2: Catalog & stock | Cargos, movements, alerts, seeder from `produtos-deposito.xlsx` | 2026-06-08 |
-| M3: Customers & fees | Full registry + bulk recompute | 2026-06-17 |
-| M4: Operational sales | New sale + deliveries + shells + out-of-area edit | 2026-07-04 |
-| M5: Reports | Separated listings + admin dashboard | 2026-07-14 |
-| M6: Google integrations | Automated Drive backup + 2-way Contacts sync + Gmail SMTP | 2026-07-30 |
-| M7: Go-live | Hardening + training + production | 2026-08-20 |
+| Milestone | Deliverable | Target date | Status (2026-05-18) |
+|-----------|-------------|-------------|---------------------|
+| M1: Foundation ready | Login, roles, settings, staging deploy on Oracle Free Tier | 2026-05-22 | 🟡 Partial — staging live, settings page live; **roles + depot config still missing** |
+| M2: Catalog & stock | Cargos, movements, alerts, seeder from `produtos-deposito.xlsx` | 2026-06-08 | 🟡 Partial — catalog + seeder + sale-driven movements done; **Cargo model + product-batch expiry write-off still missing** |
+| M3: Customers & fees | Full registry + bulk recompute | 2026-06-17 | 🟡 Partial — registry done; **bulk recompute + geocoded auto-compute still missing** |
+| M4: Operational sales | New sale + deliveries + shells + out-of-area edit | 2026-07-04 | 🟡 Partial — new sale + shells done; **delivery dispatch board (F11) + out-of-area gating not started** |
+| M5: Reports | Separated listings + admin dashboard | 2026-07-14 | ⛔ Not started |
+| M6: Google integrations | Automated Drive backup + 2-way Contacts sync + Gmail SMTP | 2026-07-30 | ⛔ Not started |
+| M7: Go-live | Hardening + training + production | 2026-08-20 | ⛔ Not started |
 
 ---
 
@@ -1081,3 +1118,4 @@ gantt
 | 1.2.0 | 2026-05-09 | Anderson de Oliveira Venturini | Full translation to English (project documentation language requirement). Resolved questions 11–13: Oracle Cloud Always-Free hosting, Gmail SMTP for transactional email, dedicated Google account `fa.distribuidora.sistema@gmail.com`. Added technical risks for Oracle Free Tier (idle reclaim, ARM64 images) and Gmail SMTP (daily limit). New open questions 15–17 (Oracle region, domain, monthly backup retention) |
 | 1.3.0 | 2026-05-11 | Anderson de Oliveira Venturini | Resolved question 16: domain name is **<https://fa.andersonventurini.cloud>**, provisioned on the maintainer's existing `andersonventurini.cloud` zone. The address currently serves the **testing environment** and will be reused for production at M7. Added a dedicated "Environments" subsection in section 5 and a staging-URL row in the Confirmed Baseline Configuration. Header gains a `Staging / testing URL` field |
 | 1.4.0 | 2026-05-11 | Anderson de Oliveira Venturini | F04 gains **per-item shell validity capture**: each `SaleItem` for a returnable variant stores `delivered_shell_expires_at` (month/year of the shell the customer takes — required for full / exchange / shell-only) and `returned_shell_expires_at` (month/year of the shell the customer brings back — required only for exchange). Stored as `DATE` (first day of the month), displayed as `m/Y`. ERD updated. Triggered alongside the implementation of F07 (Customer registry with phones + addresses) and F09 (Sale registration with items repeater) plus the purchase-history view as a Sales relation manager under Customer |
+| 1.5.0 | 2026-05-18 | Anderson de Oliveira Venturini | First implementation-status pass against actual codebase: new **Implementation Status** section near the top (per-feature done/partial/not-started + ~40% MVP completion estimate) and per-criterion checkboxes flipped across F02, F03, F04, F06, F07, F08, F09, F10, F14. Recorded **F14 deviation**: hard-coded curated catalog seeder instead of runtime XLSX read — drops the `maatwebsite/excel` dependency, keeps idempotency and the single Artisan command. Milestone table gains a *Status (2026-05-18)* column. Sister doc [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) authored to sequence the remaining MVP work |
