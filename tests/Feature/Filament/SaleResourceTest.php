@@ -10,6 +10,7 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SaleItem;
+use App\Models\StockMovement;
 use App\Models\User;
 
 beforeEach(function () {
@@ -120,6 +121,51 @@ it('edits a sale and recomputes total when discount is added', function () {
 
     expect((float) $sale->fresh()->total)->toBe(14.00)
         ->and($sale->fresh()->discount_reason)->toBe('Cliente fiel');
+});
+
+// Locks the contract: when Filament creates a Sale with status=confirmed,
+// the parent saves *before* its items exist (Sale::saved sees zero items
+// and skips settleStock). The SaleItem::saved cascade is what eventually
+// retriggers Sale::saved with items present — this test prevents any
+// future refactor from breaking that path silently.
+it('settles stock when a sale is created already as confirmed via the Filament form', function () {
+    StockMovement::create([
+        'variant_id' => $this->variant->id,
+        'direction' => StockMovement::DIRECTION_IN,
+        'reason' => StockMovement::REASON_MANUAL_ADJUST,
+        'quantity' => 10,
+    ]);
+    expect($this->variant->refresh()->current_stock)->toBe(10);
+
+    livewireTest(CreateSale::class)
+        ->fillForm([
+            'customer_id' => $this->customer->id,
+            'type' => 'counter',
+            'payment_method' => 'cash',
+            'status' => 'confirmed',
+            'items' => [
+                [
+                    'variant_id' => $this->variant->id,
+                    'quantity' => 3,
+                    'unit_price' => 15.00,
+                    'modality' => SaleItem::MODALITY_FULL,
+                    'delivered_shell_expires_at' => '2030-03-01',
+                ],
+            ],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $sale = Sale::query()->latest('id')->first();
+
+    expect($sale->stock_settled)->toBeTrue()
+        ->and($this->variant->refresh()->current_stock)->toBe(7)
+        ->and(StockMovement::query()
+            ->where('source_type', SaleItem::class)
+            ->where('source_id', $sale->items->first()->id)
+            ->where('direction', StockMovement::DIRECTION_OUT)
+            ->where('reason', StockMovement::REASON_SALE)
+            ->count())->toBe(1);
 });
 
 it('exposes the resource navigation metadata', function () {
