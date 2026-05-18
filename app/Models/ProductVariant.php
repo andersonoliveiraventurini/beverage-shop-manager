@@ -58,4 +58,30 @@ class ProductVariant extends Model
     {
         return $this->current_stock < (int) $this->min_stock;
     }
+
+    public function cargoItems()
+    {
+        return $this->hasMany(CargoItem::class, 'variant_id');
+    }
+
+    /**
+     * Weighted-average purchase cost across all cargo receipts. Falls back to
+     * the static cost_price column when the variant has never been received.
+     */
+    public function getWeightedAverageCostAttribute(): float
+    {
+        $items = $this->cargoItems()->get(['quantity', 'purchase_price']);
+
+        $totalQty = (int) $items->sum('quantity');
+        if ($totalQty === 0) {
+            return (float) ($this->cost_price ?? 0);
+        }
+
+        $totalSpend = (float) $items->reduce(
+            fn (float $acc, $row) => $acc + ((float) $row->purchase_price * (int) $row->quantity),
+            0.0,
+        );
+
+        return round($totalSpend / $totalQty, 2);
+    }
 }

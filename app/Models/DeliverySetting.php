@@ -14,6 +14,7 @@ class DeliverySetting extends Model
         'out_of_area_extra_fee',
         'default_building_fee',
         'track_water_shells',
+        'near_expiry_threshold_days',
     ];
 
     protected $casts = [
@@ -22,6 +23,7 @@ class DeliverySetting extends Model
         'out_of_area_extra_fee' => 'decimal:2',
         'default_building_fee' => 'decimal:2',
         'track_water_shells' => 'boolean',
+        'near_expiry_threshold_days' => 'integer',
     ];
 
     /**
@@ -35,11 +37,17 @@ class DeliverySetting extends Model
             'out_of_area_extra_fee' => 1.00,
             'default_building_fee' => 1.00,
             'track_water_shells' => false,
+            'near_expiry_threshold_days' => 30,
         ]);
     }
 
     public static function trackingShells(): bool
     {
         return (bool) static::current()->track_water_shells;
+    }
+
+    public static function nearExpiryThresholdDays(): int
+    {
+        return (int) static::current()->near_expiry_threshold_days;
     }
 }

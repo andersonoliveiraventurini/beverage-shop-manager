@@ -13,6 +13,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Text;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -60,6 +62,7 @@ class VariantsRelationManager extends RelationManager
                             ->numeric()
                             ->step('0.01')
                             ->minValue(0)
+                            ->live(onBlur: true)
                             ->required(),
 
                         TextInput::make('cost_price')
@@ -68,6 +71,7 @@ class VariantsRelationManager extends RelationManager
                             ->numeric()
                             ->step('0.01')
                             ->minValue(0)
+                            ->live(onBlur: true)
                             ->placeholder('≈ 65% do preço de venda'),
 
                         TextInput::make('min_stock')
@@ -77,6 +81,17 @@ class VariantsRelationManager extends RelationManager
                             ->minValue(0)
                             ->default(5)
                             ->required(),
+
+                        // PRD F03 acceptance criterion: visual warning when sale_price < cost_price.
+                        // Lives in the Preços section so the attendant sees it in context.
+                        Text::make('⚠️ Preço de venda menor que o custo — confirme antes de salvar.')
+                            ->color('danger')
+                            ->weight('bold')
+                            ->visible(fn (Get $get) => is_numeric($get('sale_price'))
+                                && is_numeric($get('cost_price'))
+                                && (float) $get('cost_price') > 0
+                                && (float) $get('sale_price') < (float) $get('cost_price'))
+                            ->columnSpan(3),
                     ]),
 
                 Section::make('Vasilhame (retornável)')

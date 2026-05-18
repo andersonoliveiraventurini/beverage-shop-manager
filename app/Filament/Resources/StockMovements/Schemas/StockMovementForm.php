@@ -47,6 +47,7 @@ class StockMovementForm
                             ->options([
                                 StockMovement::REASON_MANUAL_ADJUST => 'Ajuste manual',
                                 StockMovement::REASON_CARGO => 'Carga (entrada de fornecedor)',
+                                StockMovement::REASON_WRITE_OFF => 'Baixa por vencimento',
                             ])
                             ->default(StockMovement::REASON_MANUAL_ADJUST)
                             ->required()

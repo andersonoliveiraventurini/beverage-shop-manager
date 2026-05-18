@@ -51,7 +51,14 @@ class StockMovementsTable
                         'sale_reversal' => 'Estorno',
                         'manual_adjust' => 'Ajuste manual',
                         'cargo' => 'Carga',
+                        'write_off' => 'Baixa por vencimento',
                         default => $state,
+                    })
+                    ->color(fn (string $state) => match ($state) {
+                        'write_off' => 'danger',
+                        'sale' => 'gray',
+                        'cargo' => 'success',
+                        default => 'gray',
                     }),
 
                 TextColumn::make('source_id')
@@ -75,6 +82,7 @@ class StockMovementsTable
                         'sale_reversal' => 'Estorno',
                         'manual_adjust' => 'Ajuste manual',
                         'cargo' => 'Carga',
+                        'write_off' => 'Baixa por vencimento',
                     ]),
             ])
             ->recordActions([])

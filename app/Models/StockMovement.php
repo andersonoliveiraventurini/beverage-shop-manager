@@ -17,6 +17,7 @@ class StockMovement extends Model
     public const REASON_SALE_REVERSAL = 'sale_reversal';
     public const REASON_MANUAL_ADJUST = 'manual_adjust';
     public const REASON_CARGO = 'cargo';
+    public const REASON_WRITE_OFF = 'write_off';
 
     protected $fillable = [
         'variant_id',

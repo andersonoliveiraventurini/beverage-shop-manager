@@ -44,6 +44,7 @@ class Settings extends Page
             'out_of_area_extra_fee',
             'default_building_fee',
             'track_water_shells',
+            'near_expiry_threshold_days',
         ]));
     }
 
@@ -97,6 +98,20 @@ class Settings extends Page
                             ->label('Acompanhar cascos por cliente')
                             ->inline(false)
                             ->helperText('Default: desligado.'),
+                    ]),
+
+                Section::make('Vencimento de produtos')
+                    ->description('Define a janela usada pelo painel "Produtos próximos do vencimento" (lotes vindos de cargas).')
+                    ->components([
+                        TextInput::make('near_expiry_threshold_days')
+                            ->label('Janela de alerta (dias)')
+                            ->numeric()
+                            ->integer()
+                            ->minValue(1)
+                            ->maxValue(180)
+                            ->default(30)
+                            ->required()
+                            ->helperText('Lotes que vencem em até X dias aparecem como urgência alta.'),
                     ]),
             ])
             ->statePath('data');
