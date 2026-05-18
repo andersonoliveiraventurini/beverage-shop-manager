@@ -11,7 +11,7 @@ use App\Models\User;
 
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->manager()->create());
 });
 
 it('renders the Categories list page', function () {

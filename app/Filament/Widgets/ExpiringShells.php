@@ -16,6 +16,10 @@ class ExpiringShells extends StatsOverviewWidget
 
     public static function canView(): bool
     {
+        $user = auth()->user();
+        if (! $user || $user->isDeliverer()) {
+            return false;
+        }
         return DeliverySetting::trackingShells();
     }
 

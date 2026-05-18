@@ -13,7 +13,7 @@ use App\Models\User;
 
 
 beforeEach(function () {
-    $this->actingAs(User::factory()->create());
+    $this->actingAs(User::factory()->manager()->create());
     $this->category = Category::create(['slug' => 'agua', 'name' => 'Água', 'active' => true]);
 });
 

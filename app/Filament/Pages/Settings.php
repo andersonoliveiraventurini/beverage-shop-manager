@@ -31,6 +31,11 @@ class Settings extends Page
 
     public ?array $data = [];
 
+    public static function canAccess(): bool
+    {
+        return optional(auth()->user())->isManager() ?? false;
+    }
+
     public function mount(): void
     {
         $this->form->fill(DeliverySetting::current()->only([
