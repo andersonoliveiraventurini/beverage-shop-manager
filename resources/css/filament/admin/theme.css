@@ -3,8 +3,20 @@
 
 @source '../../../../app/Filament/**/*';
 @source '../../../../resources/views/filament/**/*';
+@source '../../../../resources/views/components/fa/**/*';
 
+/*
+ * FA Distribuidora — design tokens.
+ * Single source of truth for color + typography. See docs/DESIGN.md.
+ * Mirrored in app/Providers/Filament/AdminPanelProvider.php — keep in sync.
+ */
 @theme {
+    --fa-azul-profundo: #0B3D91;
+    --fa-azul-cristal:  #3FA9F5;
+    --fa-amarelo-solar: #F7C948;
+    --fa-branco-mineral: #FAFBFD;
+    --fa-tinta-noite:   #0E1730;
+
     --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
     --font-display: 'Archivo Black', 'Inter', sans-serif;
 }
@@ -19,9 +31,16 @@
     letter-spacing: -0.01em;
 }
 
-/* Brand-tinted login background for a hint of Azul Profundo */
+/* Branco Mineral on the page background, Tinta Noite on body text. */
+.fi-body,
+.fi-main {
+    background-color: var(--fa-branco-mineral);
+    color: var(--fa-tinta-noite);
+}
+
+/* Brand-tinted login layout — soft Azul Profundo + Amarelo Solar glow. */
 .fi-simple-layout {
     background:
-        radial-gradient(circle at 0% 0%, rgba(11, 61, 145, 0.08), transparent 40%),
-        radial-gradient(circle at 100% 100%, rgba(247, 201, 72, 0.10), transparent 40%);
+        radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--fa-azul-profundo) 8%, transparent), transparent 40%),
+        radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--fa-amarelo-solar) 10%, transparent), transparent 40%);
 }

@@ -17,6 +17,7 @@ This plan sequences every MVP item the PRD still lists as ⛔ Not started or �
 3. **Pest run in parallel** whenever the work is parallel-safe. Avoid parallel runs for tests that touch the same singletons.
 4. **One concern per phase**. A phase ends with a commit, a green Pest run, and a documentation entry — never a half-finished surface.
 5. **Snapshot, never recompute on sales** (PRD §F10). All fee, price and totals logic that touches sales must read the snapshot columns; only customer-side flows compute.
+6. **Brand compliance is non-negotiable** (PRD [NFR-01](./prd/prd-fa-distribuidora.md#nfr-01--brand-compliance)). Every phase exit-criterion includes a "Brand compliance" line: no hardcoded hex / font outside the files listed in [`docs/DESIGN.md`](./DESIGN.md) §9, every customer-facing surface consumes the `<x-fa.*>` components. Phase 0 below sets up the substrate that makes this possible — it ships **before** any other feature work.
 
 ---
 
@@ -35,6 +36,22 @@ The phases below follow this revised order, mapped back to PRD milestones.
 
 ## Phases
 
+### Phase 0 — Brand Retrofit (cross-cutting)
+
+Ships **before** Phase A. Locks the substrate that makes NFR-01 enforceable on every subsequent feature.
+
+| Step | Deliverable | Effort | Notes |
+|------|-------------|--------|-------|
+| 0.1 | **R1 — Token CSS variables**: declare `--fa-azul-profundo`, `--fa-azul-cristal`, `--fa-amarelo-solar`, `--fa-branco-mineral`, `--fa-tinta-noite` in `resources/css/filament/admin/theme.css`. Refactor existing selectors (heading font-family, login gradient) to consume them. Mirror the same values in `AdminPanelProvider::colors` with an explicit "synced with theme.css" comment | S | Pure refactor — visual output is bit-identical for now |
+| 0.2 | **R2 — Apply Branco Mineral + Tinta Noite**: panel page background uses `var(--fa-branco-mineral)`; default body text uses `var(--fa-tinta-noite)`. Verify dark-mode contrast (dark-mode is not in MVP scope but the tokens must not break it) | S | First visible change |
+| 0.3 | **R3 — `<x-fa.wave-divider />` Blade component**: single SVG source under `resources/views/components/fa/wave-divider.blade.php`. Accepts `color`, `inverted`, `class` props. Used as the canonical section divider | S | |
+| 0.4 | **`config/brand.php`** literals (name, tagline, address, hours, phones) + audit any existing template that hard-codes those strings — replace with `config('brand.*')`. The Filament panel name `FA Distribuidora` and the `APP_NAME` env value both read from this | S | |
+| 0.5 | **Brand-compliance test**: `tests/Feature/DesignSystemTest.php`. Greps the `app/`, `resources/`, `config/` trees for `#[0-9A-Fa-f]{3,8}` and `font-family:` outside the allowed source files, fails the build when a violation is introduced | S | Automated NFR-01 verification |
+
+**Exit criterion**: `pest --group=design` is green, all five Acceptance Criteria of NFR-01 flip to `[x]`, no visible regression on the existing screens. The `<x-fa.disk-entregas />` component is **not** in Phase 0 — it lands inside Phase D (with the receipt) since that's the first surface that needs it.
+
+---
+
 ### Phase A — Foundation completion (M1 wrap-up)
 
 | Step | Feature | Effort | Notes |
@@ -44,7 +61,7 @@ The phases below follow this revised order, mapped back to PRD milestones.
 | A.3 | **Password reset wiring**: confirm Laravel's bundled email reset works end-to-end with Gmail SMTP (deferred to Phase F integration, but the routes + UI are scaffolded now) | S | |
 | A.4 | **Pest coverage**: factories for `Store` and the new `role` value; policy tests asserting that an attendant cannot view `StockMovementResource::create` or `Settings` | S | |
 
-**Exit criterion**: `php artisan test` green; manager / attendant / deliverer can each sign in and only see what they should.
+**Exit criterion**: `php artisan test` green; manager / attendant / deliverer can each sign in and only see what they should. **Brand compliance**: any new login / role-related screen uses tokens from Phase 0; the depot configuration page consumes `config('brand.*')` for read-only "Default values" display.
 
 ---
 
@@ -69,7 +86,7 @@ The phases below follow this revised order, mapped back to PRD milestones.
 - `Settings` page gains `near_expiry_threshold_days` (default 30) — read by a new product-batch near-expiry widget (mirrors `ExpiringShells`).
 - Pest: write-off decrements `current_stock`; near-expiry widget shows correct counts at threshold boundaries.
 
-**Exit criterion**: cargo can be entered through the UI; `current_stock` matches IN-OUT-WRITEOFF math; near-expiry widget visible to manager.
+**Exit criterion**: cargo can be entered through the UI; `current_stock` matches IN-OUT-WRITEOFF math; near-expiry widget visible to manager. **Brand compliance**: the new near-expiry widget uses the same token + wave-divider conventions as `ExpiringShells`.
 
 ---
 
@@ -84,7 +101,7 @@ The phases below follow this revised order, mapped back to PRD milestones.
 | C.5 | **F09 out-of-area gating**: `out_of_area_override` visible/editable in `SaleForm` only when `customer.in_delivery_area === false`. Edits create an `audit_log` entry (introduce a minimal `audit_logs(model_type, model_id, field, before, after, user_id, reason, created_at)` table — same shape will serve F09's price override and discount-reason audit) | M |
 | C.6 | **F08 polish**: per-period date filter + per-product filter on `SalesRelationManager`; "Total spent in period" summary row; "Top recurring product" computed view | M |
 
-**Exit criterion**: creating a customer with an address auto-fills fees; manager can hit "Recompute all" and see counts of updated / skipped customers; sales for out-of-area customers expose the override only for them and log the edit.
+**Exit criterion**: creating a customer with an address auto-fills fees; manager can hit "Recompute all" and see counts of updated / skipped customers; sales for out-of-area customers expose the override only for them and log the edit. **Brand compliance**: customer infolist uses Display font for the customer name + key totals; "Recompute fees" confirmation modal styled with Solar Yellow warning treatment.
 
 ---
 
@@ -102,7 +119,7 @@ The phases below follow this revised order, mapped back to PRD milestones.
 - Actions: *Start route* (`pending → en_route`), *Mark delivered* (`en_route → completed` + records returned shells when applicable, which deducts the matching `WaterShellLedger` rows), *Cancel with reason* (`* → cancelled` + reverses the parent sale's stock via existing `Sale::reverseStock`).
 - Pest: state transitions; cancellation reverses stock; returned-shell records update the ledger correctly.
 
-**Exit criterion**: deliverer signs in on their phone, sees only deliveries assigned to them, and can complete one in two taps. Manager sees everyone's lists.
+**Exit criterion**: deliverer signs in on their phone, sees only deliveries assigned to them, and can complete one in two taps. Manager sees everyone's lists. **Brand compliance**: printable receipt uses `<x-fa.wave-divider />` between header / items / totals, the brand logo as a watermark, `<x-fa.disk-entregas />` as the footer, and the Display font for the total. Delivery board mobile view: 44 px touch targets (per §6 *Accessibility*), buttons in Azul Profundo, completion confirmation in Solar Yellow.
 
 ---
 
@@ -132,7 +149,7 @@ The phases below follow this revised order, mapped back to PRD milestones.
 - Manager-only via the same policy from Phase A.
 - Export PDF (DomPDF on a route) and XLSX.
 
-**Exit criterion**: manager opens `/admin/dashboard`, picks "last 30 days", and sees every KPI populated.
+**Exit criterion**: manager opens `/admin/dashboard`, picks "last 30 days", and sees every KPI populated. **Brand compliance**: every chart uses palette tokens (line = Azul Profundo, bar fill = Azul Cristal + Amarelo Solar pair); KPI cards use Display font for the big number; "Disk Entregas" card with brand phone CTA pattern is included on the dashboard footer.
 
 ---
 
@@ -159,7 +176,7 @@ The phases below follow this revised order, mapped back to PRD milestones.
 - On a new Google address with no lat/lng → enqueue geocode via Phase C's `AddressGeocoder`, then recompute fees.
 - Group / label: default "FA Distribuidora", configurable from Settings.
 
-**Exit criterion**: manager grants OAuth once; daily backup lands in Drive; contacts edits on either side appear on the other within 15 min.
+**Exit criterion**: manager grants OAuth once; daily backup lands in Drive; contacts edits on either side appear on the other within 15 min. **Brand compliance**: the OAuth / status pages in Settings render with the same tokens as the rest of the panel; any operational email (backup failure, sync conflict) uses a Blade template that consumes `config('brand.*')` and the wave divider.
 
 ---
 
@@ -178,12 +195,18 @@ The phases below follow this revised order, mapped back to PRD milestones.
 
 ```mermaid
 flowchart LR
-    A1[A.1 Depot] --> D2[D.2 Receipt]
-    A2[A.2 Roles] --> D1[D.1 Price gate]
+    P0[Phase 0 Brand] --> A1[A.1 Depot]
+    P0 --> A2[A.2 Roles]
+    P0 --> B1[B.1 Catalog polish]
+    P0 --> C1[C.1 Fee compute]
+    P0 --> D2[D.2 Receipt]
+    P0 --> E1[E.1 Reports]
+    A1 --> D2
+    A2 --> D1[D.1 Price gate]
     A2 --> E2[E.2 Dashboard manager-only]
     B2[B.2 Cargo] --> B3[B.3 Write-off]
     B2 --> E2
-    C1[C.1 Fee compute] --> C4[C.4 Recompute action]
+    C1 --> C4[C.4 Recompute action]
     C1 --> C5[C.5 Out-of-area gate]
     C2[C.2 Geocoding] --> C1
     D3[D.3 Delivery board] --> E2
@@ -230,6 +253,7 @@ docker run --rm -v "$PWD:/app" -w /app fa-test:php84 ./vendor/bin/pest --paralle
 
 | Phase | Total effort | Notional calendar weeks (single developer at ~0.6 FTE) |
 |-------|--------------|---------------------------------------------------------|
+| 0 | ~1 day | 0.2 |
 | A | ~1 week | 1 |
 | B | ~1.5 weeks | 1.5 |
 | C | ~2 weeks | 2 |
@@ -237,9 +261,9 @@ docker run --rm -v "$PWD:/app" -w /app fa-test:php84 ./vendor/bin/pest --paralle
 | E | ~1.5 weeks | 1.5 |
 | F | ~2 weeks | 2 |
 | G | ~1 week | 1 |
-| **MVP total** | **~10.5 weeks** | **10–11 weeks** |
+| **MVP total** | **~10.7 weeks** | **10–11 weeks** |
 
-The PRD's go-live target is 2026-08-20 (~13 weeks from the snapshot date). The plan fits the target with ~2 weeks of buffer **only if** Phase F (Google integrations) starts in parallel with Phase E. Sequential execution slips go-live by 2–3 weeks.
+The PRD's go-live target is 2026-08-20 (~13 weeks from the snapshot date). The plan fits the target with ~2 weeks of buffer **only if** Phase F (Google integrations) starts in parallel with Phase E. Sequential execution slips go-live by 2–3 weeks. Phase 0 absorbs into the existing buffer.
 
 ---
 
@@ -248,3 +272,4 @@ The PRD's go-live target is 2026-08-20 (~13 weeks from the snapshot date). The p
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0.0 | 2026-05-18 | Anderson de Oliveira Venturini | Initial plan — companion to PRD v1.5.0. Sequences A → G with cluster-level breakdown, dependency graph, risk callouts and effort estimate |
+| 1.1.0 | 2026-05-18 | Anderson de Oliveira Venturini | Added **Phase 0 — Brand Retrofit** (CSS variables, `config/brand.php`, `<x-fa.wave-divider />`, automated `tests/Feature/DesignSystemTest.php` compliance gate) and a "Brand compliance" exit-criterion line on every other phase. References PRD [NFR-01](./prd/prd-fa-distribuidora.md#nfr-01--brand-compliance) and [`docs/DESIGN.md`](./DESIGN.md). Dependency graph + effort table updated |

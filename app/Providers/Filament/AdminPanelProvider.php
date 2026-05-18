@@ -36,10 +36,13 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->font('Inter')
             ->login()
+            // Brand palette — mirror of resources/css/filament/admin/theme.css.
+            // Source-of-truth: docs/DESIGN.md §2. Do NOT add hex values here
+            // without updating theme.css + DESIGN.md in the same PR.
             ->colors([
-                'primary' => Color::hex('#0B3D91'),
-                'info' => Color::hex('#3FA9F5'),
-                'warning' => Color::hex('#F7C948'),
+                'primary' => Color::hex('#0B3D91'), // --fa-azul-profundo
+                'info' => Color::hex('#3FA9F5'),    // --fa-azul-cristal
+                'warning' => Color::hex('#F7C948'), // --fa-amarelo-solar
                 'danger' => Color::Red,
                 'success' => Color::Emerald,
                 'gray' => Color::Slate,

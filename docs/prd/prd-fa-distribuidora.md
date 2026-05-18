@@ -1,6 +1,6 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.5.0
+> **Version**: 1.5.1
 > **Status**: Draft — Implementation in progress
 > **Created**: 2026-05-09
 > **Last Updated**: 2026-05-18
@@ -8,6 +8,7 @@
 > **Customer**: FA Distribuidora — Water · Beverages · Charcoal (Av. Transamazônica, 1197 — Jardim Garcia, Campinas-SP, Brazil)
 > **Staging / testing URL**: <https://fa.andersonventurini.cloud>
 > **Implementation plan**: see [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md)
+> **Design system**: see [`docs/DESIGN.md`](../DESIGN.md) — textual source-of-truth distilled from the brand manual
 
 ---
 
@@ -448,6 +449,27 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 
 ---
 
+### Non-Functional Requirements (cross-cutting — apply to every feature)
+
+#### NFR-01 — Brand Compliance
+
+**Description**: The FA Distribuidora visual identity (palette, typography, logo, wave system, phone CTA pattern) defined in `FA Distribuidora · Print.pdf` is **mandatory** on every UI surface delivered by this project — admin panel, login, dashboard, future printable receipt and any future external-facing page. The textual source-of-truth is [`docs/DESIGN.md`](../DESIGN.md), distilled from the brand manual.
+
+**Story**: As the owner, I want every screen of the system to look like an extension of the flyer and the storefront, so customers and staff immediately recognize "this is FA" no matter where they see it — paper, phone or browser.
+
+**Acceptance criteria**:
+- [x] Color tokens live in a single CSS variables file (`resources/css/filament/admin/theme.css`) and are mirrored in `AdminPanelProvider::colors`. No hex value may be declared outside those two files (and the source SVGs)
+- [x] Typography (Archivo Black for display, Inter for body) loaded once from bunny.net; consumed via `--font-display` / `--font-sans`
+- [x] Logo full lockup in the panel topbar; mark-only SVG used for favicon and mobile drawer
+- [ ] Page background uses Branco Mineral (`#FAFBFD`) and text color uses Tinta Noite (`#0E1730`) via CSS variables — *retrofit in Phase 0*
+- [ ] Reusable Blade components: `<x-fa.wave-divider />`, `<x-fa.disk-entregas />` — *added in Phase 0*
+- [ ] String literals (name, tagline, address, hours, phones) live in `config/brand.php`; templates read via `config('brand.*')` — *added in Phase 0*
+- [ ] Every code review for a new UI surface ticks the component checklist in `docs/DESIGN.md` §8 — process change, no code
+
+**Verification**: a Pest test (`tests/Feature/DesignSystemTest.php`) greps for hardcoded hex values outside the allowed source files and fails the build when one appears — automated brand-compliance gate.
+
+---
+
 ### Post-MVP (P1 — next-up)
 
 | Feature | Description | Effort |
@@ -833,14 +855,9 @@ flowchart TD
 | Settings | Globals | Radius, fees, shell tracking, depot data, Google integrations status |
 | Google Integrations | OAuth status | Drive backup status, Contacts sync status, last operation, reconnect button |
 
-### Visual Identity (already defined)
+### Visual Identity
 
-The FA Distribuidora brand is set and must be respected in the UI:
-
-- **Palette**: Deep Blue `#0B3D91` (primary), Crystal Blue `#3FA9F5` (secondary), Solar Yellow `#F7C948` (accent), Mineral White `#FAFBFD` (background), Night Ink `#0E1730` (text)
-- **Typography**: Archivo Black (titles/CTAs), Inter 400/600/800 (body)
-- **Logo**: FA monogram with a water drop above the F, inside a circle
-- **Application**: app header, printed receipts, favicon
+See **[NFR-01 — Brand Compliance](#nfr-01--brand-compliance)** in section 4 and the full design system at [`docs/DESIGN.md`](../DESIGN.md). Brand identity is treated as a cross-cutting non-functional requirement, not a UX concern, because it applies to every surface (admin, login, dashboard, future printable receipt, future external pages).
 
 ### Accessibility
 
@@ -1119,3 +1136,4 @@ gantt
 | 1.3.0 | 2026-05-11 | Anderson de Oliveira Venturini | Resolved question 16: domain name is **<https://fa.andersonventurini.cloud>**, provisioned on the maintainer's existing `andersonventurini.cloud` zone. The address currently serves the **testing environment** and will be reused for production at M7. Added a dedicated "Environments" subsection in section 5 and a staging-URL row in the Confirmed Baseline Configuration. Header gains a `Staging / testing URL` field |
 | 1.4.0 | 2026-05-11 | Anderson de Oliveira Venturini | F04 gains **per-item shell validity capture**: each `SaleItem` for a returnable variant stores `delivered_shell_expires_at` (month/year of the shell the customer takes — required for full / exchange / shell-only) and `returned_shell_expires_at` (month/year of the shell the customer brings back — required only for exchange). Stored as `DATE` (first day of the month), displayed as `m/Y`. ERD updated. Triggered alongside the implementation of F07 (Customer registry with phones + addresses) and F09 (Sale registration with items repeater) plus the purchase-history view as a Sales relation manager under Customer |
 | 1.5.0 | 2026-05-18 | Anderson de Oliveira Venturini | First implementation-status pass against actual codebase: new **Implementation Status** section near the top (per-feature done/partial/not-started + ~40% MVP completion estimate) and per-criterion checkboxes flipped across F02, F03, F04, F06, F07, F08, F09, F10, F14. Recorded **F14 deviation**: hard-coded curated catalog seeder instead of runtime XLSX read — drops the `maatwebsite/excel` dependency, keeps idempotency and the single Artisan command. Milestone table gains a *Status (2026-05-18)* column. Sister doc [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) authored to sequence the remaining MVP work |
+| 1.5.1 | 2026-05-18 | Anderson de Oliveira Venturini | Promoted the brand visual identity from a §6 UX subsection to a first-class cross-cutting requirement: new **NFR-01 — Brand Compliance** in §4 with explicit acceptance criteria + verification path. The §6 *Visual Identity* subsection now points to NFR-01 and to the new textual source-of-truth [`docs/DESIGN.md`](../DESIGN.md), which distills the printable brand manual into token tables, usage rules and a component checklist. `IMPLEMENTATION_PLAN.md` gains a **Phase 0 — Brand Retrofit** (CSS variables, `config/brand.php`, Blade components) and a "Brand compliance" exit-criterion line on every other phase |
