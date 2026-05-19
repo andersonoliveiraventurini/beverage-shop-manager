@@ -15,6 +15,13 @@ class DeliverySetting extends Model
         'default_building_fee',
         'track_water_shells',
         'near_expiry_threshold_days',
+        'google_access_token',
+        'google_refresh_token',
+        'google_token_expires_at',
+        'google_drive_folder_id',
+        'google_contacts_sync_token',
+        'google_contacts_synced_at',
+        'google_contacts_sync_paused',
     ];
 
     protected $casts = [
@@ -24,6 +31,9 @@ class DeliverySetting extends Model
         'default_building_fee' => 'decimal:2',
         'track_water_shells' => 'boolean',
         'near_expiry_threshold_days' => 'integer',
+        'google_token_expires_at' => 'datetime',
+        'google_contacts_synced_at' => 'datetime',
+        'google_contacts_sync_paused' => 'boolean',
     ];
 
     /**
