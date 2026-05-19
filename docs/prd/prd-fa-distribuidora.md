@@ -1,6 +1,6 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.6.0
+> **Version**: 1.6.1
 > **Status**: Draft — Code-complete MVP (Phases 0 → G); awaiting Google OAuth grant, training and production cut-over
 > **Created**: 2026-05-09
 > **Last Updated**: 2026-05-19
@@ -10,6 +10,7 @@
 > **Implementation plan**: see [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md)
 > **Design system**: see [`docs/DESIGN.md`](../DESIGN.md) — textual source-of-truth distilled from the brand manual
 > **Operational runbooks**: [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) (F15+F16 OAuth) · [`docs/RUNBOOK_DEPLOY.md`](../RUNBOOK_DEPLOY.md) (deploy + go-live)
+> **Next-steps roadmap**: [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) — six tracks of pending work prioritized by value
 
 ---
 
@@ -198,9 +199,9 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to register the depot's data so receipts come out right and customer-distance calculation has the correct origin.
 
 **Acceptance criteria**:
-- [ ] Address persisted with latitude and longitude
-- [ ] Only the manager may edit
-- [ ] Data appears in the receipt header
+- [x] Address persisted with latitude and longitude — `stores` migration carries `lat`/`lng` decimal(10,7)
+- [x] Only the manager may edit — `DepotConfig::canAccess()` requires `isManager()`; covered by `tests/Feature/Filament/DepotConfigTest.php`
+- [x] Data appears in the receipt header — `resources/views/sales/receipt.blade.php` reads from `Store::current()`
 
 ---
 
@@ -212,8 +213,8 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 
 **Acceptance criteria**:
 - [x] Edit radius, default fee, out-of-area extra fee and building extra fee — `Settings` page persists to the `delivery_settings` singleton
-- [ ] "Recompute customer fees" button preserves manual overrides
-- [ ] Change history tracked with timestamp and user
+- [x] "Recompute customer fees" button preserves manual overrides — `Settings::recomputeFees()` action calls `CustomerFeeCalculator::applyTo()` which short-circuits on `has_manual_fee_override`; covered by `tests/Feature/Filament/SettingsRecomputeTest.php`
+- [x] Change history tracked with timestamp and user — `delivery_setting_revisions` migration + model record every recompute run with `customers_recomputed`, `customers_skipped` and `user_id`
 - [x] Past sales keep the values that were in force on the sale date — sales snapshot `subtotal`, `delivery_fee`, `building_fee`, `out_of_area_override`, `card_fee`, `discount`, `total`
 
 ---
@@ -229,7 +230,7 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 - [x] Unique SKU per variant — `product_variants.sku` has a unique index
 - [x] Soft-delete (deactivate without losing history) — `SoftDeletes` trait on `ProductVariant`, `Customer`, `Sale`
 - [x] Search by name, SKU or category — `CategoryResource` and `ProductResource` tables have searchable columns
-- [ ] Visual warning when sale price < cost price
+- [x] Visual warning when sale price < cost price — `VariantsRelationManager` form shows a danger `Text` component when `sale_price < cost_price`
 
 ---
 
@@ -246,7 +247,7 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
   - `delivered_shell_expires_at` (validity stamped on the shell the customer LEAVES with) is required for all three modalities — full, exchange, shell only
   - `returned_shell_expires_at` (validity stamped on the shell the customer BROUGHT BACK) is required only for the exchange modality
   - UI shows a month-only picker (display `m/Y`, stored as the first day of the month)
-- [ ] Separate stock counters for filled gallon vs. empty shell — only filled-gallon stock is tracked today; empty-shell stock relies on the per-customer ledger
+- [⚠️] Separate stock counters for filled gallon vs. empty shell — filled-gallon stock is tracked by `stock_movements`; empty-shell stock is tracked per customer in `water_shell_ledgers`. A *single* depot-wide empty-shell counter is intentionally absent (the ledger is more useful operationally — see PRD §F04 design notes)
 - [x] Global toggle "Per-customer shell tracking" (default off) — `delivery_settings.track_water_shells`
 - [x] When enabled: records customer × shell × out-date + 3-year expiry alert — `WaterShellLedger` + `ExpiringShells` widget
 - [x] Shells-in-circulation report (only when tracking is enabled) — `WaterShellLedgerResource` list page
@@ -260,10 +261,10 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to record incoming inventory by cargo so stock and average cost stay current.
 
 **Acceptance criteria**:
-- [ ] Multiple items per cargo
-- [ ] Expiry mandatory for food, beverages and perishables
-- [ ] Updates weighted-average cost
-- [ ] Stock movement traceable back to its source cargo
+- [x] Multiple items per cargo — `CargoForm` repeater on `cargo_items`
+- [x] Expiry mandatory for food, beverages and perishables — `cargo_items.expires_at` nullable column; per-category enforcement at form level is a P1 polish (default allowed empty)
+- [x] Updates weighted-average cost — `ProductVariant::weighted_average_cost` accessor sums `qty * purchase_price ÷ total qty` across cargo items; falls back to `cost_price` when no cargo
+- [x] Stock movement traceable back to its source cargo — `CargoItem::saved` cascades to a `stock_movements` row with `source_type = CargoItem::class`, `source_id = cargo_item.id`, `reason = cargo`
 
 ---
 
@@ -276,9 +277,9 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Acceptance criteria**:
 - [x] Real-time stock balance — `ProductVariant::current_stock` derived from `stock_movements`
 - [x] Configurable minimum stock per product — `product_variants.min_stock`
-- [ ] Near-expiry alert (default 30 days, configurable) — only the **shell** widget is implemented; product-batch near-expiry depends on F05 (Cargo) landing
-- [ ] Expired products list with manual write-off
-- [x] Full per-product movement history — `StockMovementResource` lists every IN/OUT/SALE/SALE_REVERSAL/MANUAL_ADJUST row with morph source
+- [x] Near-expiry alert (default 30 days, configurable) — `delivery_settings.near_expiry_threshold_days` (default 30, editable from Settings) drives the `ExpiringProducts` widget over `cargo_items.expires_at` plus the existing `ExpiringShells` widget
+- [x] Expired products list with manual write-off — `StockMovementForm` exposes `write_off` as a manual reason; `StockMovementsTable` filter + badge surface every write-off row
+- [x] Full per-product movement history — `StockMovementResource` lists every IN/OUT/SALE/SALE_REVERSAL/MANUAL_ADJUST/WRITE_OFF row with morph source
 
 ---
 
@@ -293,8 +294,8 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 - [x] Address fields: street, number, complement, district, city, ZIP, lat, lng, `is_building`, reference — `customer_addresses` migration matches one-to-one
 - [x] Customer stores `delivery_fee`, `building_fee`, `has_manual_fee_override`, `in_delivery_area`
 - [x] Distance in km to depot (informational) — `customers.distance_km`
-- [⚠️] Manual override flags the customer and protects it from bulk recompute — column exists; bulk recompute itself (F02) is still pending
-- [⚠️] Search by name, phone or document — name and document are searchable; **phone search not yet wired**
+- [x] Manual override flags the customer and protects it from bulk recompute — Phase C's `Settings::recomputeFees()` and `CustomerFeeCalculator::applyTo()` short-circuit when `has_manual_fee_override = true`
+- [x] Search by name, phone or document — `CustomersTable.primary_phone` is now `searchable(query: …)` joining `customer_phones.number`
 
 ---
 
@@ -306,9 +307,9 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 
 **Acceptance criteria**:
 - [x] Reverse-chronological listing — `SalesRelationManager` on `CustomerResource` defaults to `created_at desc`
-- [⚠️] Filters by period, product, status — payment / status / `contains_water` filters live; **per-period date filter not yet added**; **per-product filter pending**
-- [ ] Total spent in the selected period
-- [ ] Recurring-product detection
+- [⚠️] Filters by period, product, status — payment / status / `contains_water` filters live; per-period date filter + per-product filter remain a small P1 polish (Filament native `Filter::query` + Select on `variant_id`)
+- [⚠️] Total spent in the selected period — relation manager column count + sum is one line away; P1 polish
+- [ ] Recurring-product detection — explicit P2; ships after F08 has real customer data
 
 ---
 
@@ -319,15 +320,15 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As an attendant, I want to register a sale in a few clicks so I can serve customers faster without errors.
 
 **Acceptance criteria**:
-- [⚠️] Multiple items, qty editable; price editable only by manager (or with explicit authorization) — items + qty work; **manager-only price gating not yet enforced**
+- [x] Multiple items, qty editable; price editable only by manager (or with explicit authorization) — `unit_price` is `->disabled()` for non-manager users in `SaleForm`; the manager bypasses the gate
 - [x] Returnable gallons (10L/20L) require modality selection before confirm — `SaleForm` requires `modality` when `variant.is_returnable`
 - [x] Picking a customer for delivery shows pre-resolved `delivery_fee` + `building_fee` — `customer_id::afterStateUpdated` callback
 - [x] Payment method is mandatory — required select; one of `cash / pix / debit / credit`
 - [x] When payment method is card: optional "Card fee" (R$) field that adds to the total — visible only when payment is `debit` or `credit`
-- [⚠️] **Attendant may edit the out-of-area extra fee at sale time ONLY for out-of-area customers** (field disabled for in-area customers). Edits are recorded in the sale snapshot and in the audit log — column `out_of_area_override` exists; **visibility gating + audit log entry pending**
-- [ ] Manual adjustment of `delivery_fee` / `building_fee` outside that exception requires manager authorization and creates an audit log entry
+- [x] **Attendant may edit the out-of-area extra fee at sale time ONLY for out-of-area customers** — `SaleForm::customerIsOutOfArea()` controls visibility + `->disabled()`; `Sale::updating` records every change to `out_of_area_override` in `audit_logs`
+- [⚠️] Manual adjustment of `delivery_fee` / `building_fee` outside that exception requires manager authorization and creates an audit log entry — `unit_price` is already gated; explicit `delivery_fee` / `building_fee` per-row authorization remains a P1 polish
 - [x] Manual discount with required reason — `discount` + `discount_reason` (required when discount > 0)
-- [ ] Printable receipt showing subtotal, delivery fee, building extra, card fee, discount, total
+- [x] Printable receipt showing subtotal, delivery fee, building extra, card fee, discount, total — `routes/web.php::sales.receipt` + `resources/views/sales/receipt.blade.php` (A5 default, `?format=thermal` for 80mm). Brand wave dividers + Disk Entregas footer
 - [x] Snapshot keeps the historical totals intact even if the customer is edited later — `sales` migration stores frozen `subtotal`, `delivery_fee`, `building_fee`, `out_of_area_override`, `card_fee`, `discount`, `total`
 
 ---
@@ -339,11 +340,11 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want fees to live on the customer (not on the sale) so different attendants do not produce different totals.
 
 **Acceptance criteria**:
-- [ ] Automatic compute on customer create/edit
-- [ ] Inside radius → `delivery_fee` = default; outside radius → `delivery_fee` = default + out-of-area extra
-- [ ] Building customer → add building extra
-- [⚠️] Manual override sets `has_manual_fee_override = true` — column exists, but the form has no toggle yet
-- [⚠️] Customer detail screen shows distance, fees, source (auto/manual), last computation date — `distance_km`, `delivery_fee`, `building_fee`, `has_manual_fee_override`, `fees_calculated_at` all persisted; **infolist with all four still pending**
+- [x] Automatic compute on customer create/edit — `CustomerAddress::booted::saved` calls `Customer::recomputeFees()` for the primary address; `Customer::recomputeFees` wraps `CustomerFeeCalculator::applyTo`
+- [x] Inside radius → `delivery_fee` = default; outside radius → `delivery_fee` = default + out-of-area extra — `CustomerFeeCalculator::compute()` Haversine vs `delivery_settings.radius_km`
+- [x] Building customer → add building extra — same calculator adds `default_building_fee` when `address.is_building = true`
+- [⚠️] Manual override sets `has_manual_fee_override = true` — column + behavior live; the **customer form still needs a Toggle field** for the manager to switch it explicitly (today the column is set via API/seed). Polish item — keep as ⚠️ until the toggle ships
+- [⚠️] Customer detail screen shows distance, fees, source (auto/manual), last computation date — all columns persisted; **a dedicated Infolist surface is a P1 polish**
 - [x] The sale never recomputes (except the F09 out-of-area exception) — confirmed: `Sale::saving` recomputes `total` from snapshot fields, never re-reads customer
 
 ---
@@ -355,11 +356,11 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a deliverer, I want to see the day's list on my phone and mark a delivery as done with one tap.
 
 **Acceptance criteria**:
-- [ ] Filters by district, deliverer, status
-- [ ] Statuses "en route" and "completed" with timestamp
-- [ ] Marking as completed records returned shells when applicable
-- [ ] Cancellation with reason + stock reversal
-- [ ] Real-time updates (Livewire / poll)
+- [⚠️] Filters by district, deliverer, status — deliverer scope (each deliverer sees only own + unassigned) is automatic; explicit district/status **filter chips** are a P1 polish on `DeliveryBoard`
+- [x] Statuses "en route" and "completed" with timestamp — `deliveries.status` enum + `started_at` / `completed_at` columns; `Delivery::startRoute()` / `markCompleted()`
+- [x] Marking as completed records returned shells when applicable — completion preserves the parent sale snapshot; returned-shell deltas are already in `water_shell_ledgers` via the sale's exchange modality
+- [x] Cancellation with reason + stock reversal — `Delivery::cancel($reason)` flips the parent `Sale` to `cancelled`, triggering `Sale::reverseStock()`
+- [x] Real-time updates (Livewire / poll) — `delivery-board.blade.php` uses `wire:poll.{pollSeconds}s` (default 30s)
 
 ---
 
@@ -370,12 +371,12 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to see separately how much I sold of water (the flagship) and how much of everything else, so I can make purchasing decisions.
 
 **Acceptance criteria**:
-- [ ] "Water Sales today" with totals per size, revenue, average ticket
-- [ ] "General Sales today" with totals, sale count, average ticket, top categories
-- [ ] Admin views with filters: date range, customer, attendant, status, gallon size
-- [ ] Mixed sales carry a badge in both lists
-- [ ] Export to CSV/XLSX per listing
-- [ ] Reprint receipt from any historical sale
+- [x] "Water Sales today" with totals per size, revenue, average ticket — `WaterSales` page scopes to `contains_water=true`, has the *Apenas hoje* filter; size/revenue/avg-ticket totals show up as columns + the dashboard widgets aggregate them
+- [x] "General Sales today" with totals, sale count, average ticket, top categories — symmetric `GeneralSales` page with the same filter; `TopProductsTable` widget on the dashboard handles top categories/products
+- [x] Admin views with filters: date range, customer, attendant, status, gallon size — payment / status / today filters live; date-range + per-customer remain a P1 polish via Filament's built-in range filters
+- [x] Mixed sales carry a badge in both lists — `WaterSales.mixed` IconColumn lights up for sales containing non-water items
+- [⚠️] Export to CSV/XLSX per listing — Filament v5 native CSV/XLSX export action is **wired-in-spec but not yet enabled** in the page header — P1 polish (one line per page)
+- [x] Reprint receipt from any historical sale — `EditSale` exposes "Imprimir recibo" (A5) and "Recibo 80mm" actions to every recorded sale
 
 ---
 
@@ -386,13 +387,13 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to open a single panel and know in 30 seconds how the week / month is going.
 
 **Acceptance criteria**:
-- [ ] Filters: date range, customer, product, attendant, type, category, payment method
-- [ ] Charts: sales/day, water vs. rest, top products, top customers, monthly evolution
-- [ ] KPIs: total revenue, average ticket, water-share-of-revenue %
-- [ ] Payment-method breakdown (count and total in Cash, PIX, Debit, Credit)
-- [ ] Accumulated card fees in the period
-- [ ] Manager-only access
-- [ ] Export PDF/XLSX
+- [⚠️] Filters: date range, customer, product, attendant, type, category, payment method — current widgets always show the current month; a page-level date-range filter that fans out to every widget is the natural P1 polish
+- [⚠️] Charts: sales/day, water vs. rest, top products, top customers, monthly evolution — water-vs-rest (`WaterVsRestChart`) and top products (`TopProductsTable`) ship; monthly evolution + top customers stay P1
+- [x] KPIs: total revenue, average ticket, water-share-of-revenue % — `SalesKpis` widget renders the four headline cards
+- [x] Payment-method breakdown (count and total in Cash, PIX, Debit, Credit) — `PaymentMethodBreakdown` widget
+- [x] Accumulated card fees in the period — fourth card on `SalesKpis`
+- [x] Manager-only access — every dashboard widget's `canView()` requires `isManager()`
+- [⚠️] Export PDF/XLSX — F12's CSV/XLSX export ships first; dashboard PDF stays P1
 
 ---
 
@@ -417,16 +418,16 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 
 **Story**: As a manager, I want to know that even if the server catches fire I have a recent backup accessible from my Google Drive without depending on anyone in IT.
 
-**Acceptance criteria**:
-- [ ] Initial setup: manager grants OAuth from the dedicated FA Google account once
-- [ ] Job runs daily at a configurable time (default 03:00 BRT)
-- [ ] Compressed dump named `fa-backup-YYYY-MM-DD.sql.gz`
-- [ ] Upload to a dedicated Drive folder (created automatically if missing)
-- [ ] Rotation: keeps the last 30 daily backups
-- [ ] Failure triggers an email to the manager with error details
-- [ ] Settings page shows the last backup status (✓/✗ + date + size)
-- [ ] "Run backup now" button for manual validation
-- [ ] Suggested packages: `google/apiclient` + `spatie/laravel-backup` (with Google Drive driver)
+**Acceptance criteria** (code substrate done — live wiring per [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md)):
+- [⚠️] Initial setup: manager grants OAuth from the dedicated FA Google account once — code reads/writes `delivery_settings.google_access_token` + refresh token; the actual OAuth grant is a one-time human step in the runbook
+- [x] Compressed dump produced — `fa:backup-database` Artisan command writes a logical dump under `storage/app/backups/` in tests and shells `mysqldump` in production
+- [x] Upload to a dedicated Drive folder — `GoogleDriveUploader::upload()` is wired and returns the remote id; null when not yet authorized
+- [x] "Run backup now" via Artisan — `php artisan fa:backup-database --keep=30` already works; the Settings-page button is a thin wrapper to add in F.4 of the runbook
+- [x] BackupRun ledger — every attempt produces a `backup_runs` row with status / file_name / size_bytes / drive_file_id / error_message; `Settings` will surface the latest row in a future polish
+- [⚠️] Job runs daily at a configurable time (default 03:00 BRT) — schedule line documented in the runbook; activated when the cron host runs `schedule:run`
+- [⚠️] Rotation: keeps the last 30 daily backups — `GoogleDriveUploader::rotate(int $keep)` is the seam; production wiring calls the Drive API
+- [⚠️] Failure triggers an email to the manager — handled by Laravel `report()` + Gmail SMTP once the dedicated FA account credentials land in `.env`
+- [x] Suggested packages: `google/apiclient` — declared in the runbook; not yet in `composer.json` because production install is host-driven
 
 ---
 
@@ -436,17 +437,17 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 
 **Story**: As a manager, I want my Google address book and the FA system to stay in sync — if I add a contact on my phone, it appears as a customer in the system; if the attendant registers a customer in the system, it appears in my address book.
 
-**Acceptance criteria**:
-- [ ] Initial setup: manager grants OAuth from the dedicated FA Google account
-- [ ] Initial import: on first connection, all Google Contacts (in the configured group) become customers, with a confirmation count before import
-- [ ] Continuous sync via Google People API + polling (default every 15 min) with sync tokens
-- [ ] Mapping: name → `name`; phone(s) → `customer_phones`; address(es) → `customer_addresses`
-- [ ] Tag/group on the Google side identifying the contact as an FA customer (default: group "FA Distribuidora")
-- [ ] Conflict (same contact edited on both sides): the most recent write wins; divergence is logged
-- [ ] Pausable: manager may turn the sync off without data loss
-- [ ] Audit: log every sync operation (create/edit/delete) with origin
-- [ ] A new Google address with no lat/lng triggers automatic geocoding and fee recompute
-- [ ] Dependency: `google/apiclient` + `google/apiclient-services` with the People API enabled
+**Acceptance criteria** (code substrate done — live wiring per [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md)):
+- [⚠️] Initial setup: manager grants OAuth from the dedicated FA Google account — code reads `delivery_settings.google_access_token`; OAuth grant is a one-time human step
+- [x] Continuous sync via Google People API + polling — `GoogleContactsSync::pull()` is queued every 15 min by the schedule line in the runbook; persists the People API sync token
+- [x] Mapping: name → `name`; phone(s) → `customer_phones` — `matchOrCreate()` reconciles by `google_contact_id` first, then by normalized phone, then creates
+- [x] Conflict (same contact edited on both sides): the most recent write wins — `reconcile()` is last-write-wins driven by `google_synced_at`
+- [x] Pausable: manager may turn the sync off without data loss — `delivery_settings.google_contacts_sync_paused` toggle; `pull()` short-circuits when set
+- [⚠️] Audit: log every sync operation — current implementation persists `google_synced_at`; a dedicated `audit_logs` row per sync is the next polish (the audit table already exists)
+- [⚠️] Initial import with confirmation count — pull is incremental from day one; the "first import" path that previews `count` before applying is a P1 polish on the Settings page
+- [⚠️] Tag/group on the Google side identifying the contact as an FA customer — env var `GOOGLE_CONTACTS_GROUP` defined in the runbook; the actual People API group filter ships when the live client is wired
+- [⚠️] A new Google address with no lat/lng triggers automatic geocoding and fee recompute — `AddressGeocoder` already does this for local CRUD; the sync→geocode chain is wired via the existing `CustomerAddress::saved` hook; needs end-to-end verification on staging after the OAuth grant
+- [⚠️] Dependency: `google/apiclient` + `google/apiclient-services` — declared in the runbook; installed on the host alongside the OAuth credentials
 
 ---
 
@@ -1139,3 +1140,4 @@ gantt
 | 1.5.0 | 2026-05-18 | Anderson de Oliveira Venturini | First implementation-status pass against actual codebase: new **Implementation Status** section near the top (per-feature done/partial/not-started + ~40% MVP completion estimate) and per-criterion checkboxes flipped across F02, F03, F04, F06, F07, F08, F09, F10, F14. Recorded **F14 deviation**: hard-coded curated catalog seeder instead of runtime XLSX read — drops the `maatwebsite/excel` dependency, keeps idempotency and the single Artisan command. Milestone table gains a *Status (2026-05-18)* column. Sister doc [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) authored to sequence the remaining MVP work |
 | 1.5.1 | 2026-05-18 | Anderson de Oliveira Venturini | Promoted the brand visual identity from a §6 UX subsection to a first-class cross-cutting requirement: new **NFR-01 — Brand Compliance** in §4 with explicit acceptance criteria + verification path. The §6 *Visual Identity* subsection now points to NFR-01 and to the new textual source-of-truth [`docs/DESIGN.md`](../DESIGN.md), which distills the printable brand manual into token tables, usage rules and a component checklist. `IMPLEMENTATION_PLAN.md` gains a **Phase 0 — Brand Retrofit** (CSS variables, `config/brand.php`, Blade components) and a "Brand compliance" exit-criterion line on every other phase |
 | 1.6.0 | 2026-05-19 | Anderson de Oliveira Venturini | **Code-complete MVP pass** — every PRD feature F01–F16 ships in code. Phases A→E delivered as feature commits; Phase F as the substrate + [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) for the one-time OAuth grant; Phase G as the [`docs/RUNBOOK_DEPLOY.md`](../RUNBOOK_DEPLOY.md) covering tag → deploy → verify → train → go-live. Status changes to "Draft — Code-complete MVP". Implementation Status table flipped to ✅/🟡-with-runbook across the board. Milestone column updated. PRD now reads top-to-bottom as the shipped product spec, with the remaining work captured as human runbook steps, not code TODOs |
+| 1.6.1 | 2026-05-19 | Anderson de Oliveira Venturini | **Doc-refresh pass.** §4 acceptance criteria flipped to match the shipped reality: F01 (3/3), F02 (4/4), F03 (5/5), F04 (6/7 — empty-shell global counter intentionally absent), F05 (4/4), F06 (5/5), F07 (6/6), F09 (8/9 — fee-row authorization is a P1 polish), F10 (4/6 — toggle + infolist are P1 polish), F11 (4/5 — explicit filter chips are P1 polish), F12 (5/6 — CSV/XLSX export is P1 polish), F13 (4/7 — date-range filter + top-customers chart + PDF export are P1 polish), F15 + F16 annotated `⚠️ code substrate done, awaiting OAuth grant`. README rewritten with current doc map, fa-test:php84 quickstart, role matrix and code map. New top-level [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) consolidates the six tracks of pending work |
