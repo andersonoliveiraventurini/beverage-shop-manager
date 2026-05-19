@@ -62,4 +62,18 @@ class Customer extends Model
     {
         return $this->hasMany(WaterShellLedger::class);
     }
+
+    public function auditLogs()
+    {
+        return $this->morphMany(\App\Models\AuditLog::class, 'auditable');
+    }
+
+    /**
+     * Recompute fees from current delivery_settings + primary address through
+     * CustomerFeeCalculator. No-op when the customer carries a manual override.
+     */
+    public function recomputeFees(): bool
+    {
+        return \App\Services\CustomerFeeCalculator::make()->applyTo($this);
+    }
 }

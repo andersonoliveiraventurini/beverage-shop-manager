@@ -246,8 +246,10 @@ class SaleForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
-                            ->helperText('Apenas para clientes fora da área.')
-                            ->visible(fn (Get $get) => $get('type') === 'delivery'),
+                            ->helperText('Editável apenas para clientes fora da área.')
+                            ->visible(fn (Get $get) => $get('type') === 'delivery'
+                                && self::customerIsOutOfArea($get('customer_id')))
+                            ->disabled(fn (Get $get) => ! self::customerIsOutOfArea($get('customer_id'))),
 
                         TextInput::make('discount')
                             ->label('Desconto')
@@ -274,6 +276,22 @@ class SaleForm
                             ->columnSpanFull(),
                     ]),
             ]);
+    }
+
+    /**
+     * F09 acceptance criterion: the out-of-area override is editable ONLY for
+     * customers flagged in_delivery_area=false. Walk-in counter sales without
+     * a customer are treated as in-area (override hidden).
+     */
+    private static function customerIsOutOfArea(?int $customerId): bool
+    {
+        if (! $customerId) {
+            return false;
+        }
+        $inArea = \App\Models\Customer::query()
+            ->whereKey($customerId)
+            ->value('in_delivery_area');
+        return $inArea === false || $inArea === 0;
     }
 
     private static function isReturnable(?int $variantId): bool

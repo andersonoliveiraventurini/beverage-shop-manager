@@ -76,6 +76,20 @@ class Sale extends Model
                 - (float) $sale->discount), 2);
         });
 
+        // Audit: any change to out_of_area_override on an existing sale is
+        // logged so the manager has traceability of attendant adjustments.
+        static::updating(function (Sale $sale): void {
+            if ($sale->isDirty('out_of_area_override')) {
+                \App\Models\AuditLog::record(
+                    $sale,
+                    \App\Models\AuditLog::EVENT_OUT_OF_AREA_EDIT,
+                    'out_of_area_override',
+                    $sale->getOriginal('out_of_area_override'),
+                    $sale->out_of_area_override,
+                );
+            }
+        });
+
         static::saved(function (Sale $sale): void {
             // Settle (decrement) stock when a sale becomes 'confirmed'.
             // Guarded by items existing — the Filament create flow saves Sale before items.

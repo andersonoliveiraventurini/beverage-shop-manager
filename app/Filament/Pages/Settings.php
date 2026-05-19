@@ -4,7 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Models\Customer;
 use App\Models\DeliverySetting;
+use App\Models\DeliverySettingRevision;
+use App\Services\CustomerFeeCalculator;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Forms\Components\TextInput;
@@ -124,6 +127,15 @@ class Settings extends Page
                 ->label('Salvar')
                 ->icon(Heroicon::OutlinedCheck)
                 ->action('save'),
+
+            Action::make('recomputeFees')
+                ->label('Recalcular taxas dos clientes')
+                ->icon(Heroicon::OutlinedArrowPath)
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Recalcular taxas de entrega?')
+                ->modalDescription('A ação varre todos os clientes SEM override manual e recalcula a taxa a partir das configurações atuais. Clientes com `has_manual_fee_override = true` são preservados.')
+                ->action('recomputeFees'),
         ];
     }
 
@@ -134,6 +146,39 @@ class Settings extends Page
 
         Notification::make()
             ->title('Configurações salvas')
+            ->success()
+            ->send();
+    }
+
+    public function recomputeFees(): void
+    {
+        $calculator = CustomerFeeCalculator::make();
+        $recomputed = 0;
+        $skipped = 0;
+
+        Customer::query()
+            ->with('primaryAddress')
+            ->cursor()
+            ->each(function (Customer $customer) use ($calculator, &$recomputed, &$skipped) {
+                $applied = $calculator->applyTo($customer);
+                $applied ? $recomputed++ : $skipped++;
+            });
+
+        $settings = DeliverySetting::current();
+        DeliverySettingRevision::create([
+            'radius_km' => $settings->radius_km,
+            'default_delivery_fee' => $settings->default_delivery_fee,
+            'out_of_area_extra_fee' => $settings->out_of_area_extra_fee,
+            'default_building_fee' => $settings->default_building_fee,
+            'track_water_shells' => $settings->track_water_shells,
+            'near_expiry_threshold_days' => $settings->near_expiry_threshold_days,
+            'customers_recomputed' => $recomputed,
+            'customers_skipped' => $skipped,
+            'user_id' => auth()->id(),
+        ]);
+
+        Notification::make()
+            ->title("Recálculo concluído — {$recomputed} atualizado(s), {$skipped} preservado(s) por override manual.")
             ->success()
             ->send();
     }

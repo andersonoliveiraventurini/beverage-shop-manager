@@ -38,7 +38,13 @@ class CustomersTable
 
                 TextColumn::make('primary_phone')
                     ->label('Telefone')
-                    ->getStateUsing(fn ($record) => optional($record->phones->first())->number ?? '—'),
+                    ->getStateUsing(fn ($record) => optional($record->phones->first())->number ?? '—')
+                    ->searchable(
+                        query: fn ($query, string $search) => $query->orWhereHas(
+                            'phones',
+                            fn ($q) => $q->where('number', 'like', '%' . $search . '%'),
+                        ),
+                    ),
 
                 TextColumn::make('primaryAddress.district')
                     ->label('Bairro')

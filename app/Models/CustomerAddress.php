@@ -50,4 +50,20 @@ class CustomerAddress extends Model
             $this->city ? " · {$this->city}" : null,
         ])->filter()->implode('');
     }
+
+    protected static function booted(): void
+    {
+        // Whenever the primary address changes (or its coords/is_building), the
+        // parent customer's fee snapshot needs to be refreshed. We only run for
+        // primary rows to avoid extra work on secondary addresses.
+        static::saved(function (CustomerAddress $address): void {
+            if (! $address->is_primary) {
+                return;
+            }
+            $customer = $address->customer;
+            if ($customer) {
+                $customer->recomputeFees();
+            }
+        });
+    }
 }
