@@ -133,6 +133,11 @@ class SaleForm
                                     ->step('0.01')
                                     ->minValue(0)
                                     ->required()
+                                    ->disabled(fn () => ! optional(auth()->user())->isManager())
+                                    ->dehydrated()
+                                    ->helperText(fn () => optional(auth()->user())->isManager()
+                                        ? null
+                                        : 'Apenas o gerente pode alterar o preço unitário.')
                                     ->columnSpan(4),
 
                                 // --- Returnable-gallon modality + validities ---

@@ -95,6 +95,7 @@ class Sale extends Model
             // Guarded by items existing — the Filament create flow saves Sale before items.
             if ($sale->status === self::STATUS_CONFIRMED && $sale->items()->exists()) {
                 $sale->settleStock();
+                $sale->ensureDeliveryRecord();
             }
             // Reverse stock when a sale is moved to 'cancelled'. Driven by actual OUT
             // movements (not the in-memory stock_settled flag, which can be stale
@@ -303,5 +304,29 @@ class Sale extends Model
     public function items(): HasMany
     {
         return $this->hasMany(SaleItem::class);
+    }
+
+    public function delivery()
+    {
+        return $this->hasOne(\App\Models\Delivery::class);
+    }
+
+    /**
+     * Idempotent: create a pending Delivery row when a delivery-type sale
+     * becomes confirmed. Counter sales do not produce a delivery row.
+     */
+    public function ensureDeliveryRecord(): void
+    {
+        if ($this->type !== self::TYPE_DELIVERY) {
+            return;
+        }
+        if ($this->delivery()->exists()) {
+            return;
+        }
+
+        \App\Models\Delivery::create([
+            'sale_id' => $this->id,
+            'status' => \App\Models\Delivery::STATUS_PENDING,
+        ]);
     }
 }

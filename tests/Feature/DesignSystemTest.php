@@ -44,6 +44,10 @@ it('does not leak hex color literals outside the allow-listed source files', fun
         'public/images/fa-logo.svg',
         'public/images/fa-logo-mark.svg',
         'public/favicon.svg',
+        // The receipt is a standalone HTML page (no @import of theme.css) so
+        // it must redeclare the brand tokens locally. Keep this template
+        // synced with theme.css when tokens change — see docs/DESIGN.md §9.
+        'resources/views/sales/receipt.blade.php',
         // This very test references token values in strings — exempt itself.
         'tests/Feature/DesignSystemTest.php',
     ];
