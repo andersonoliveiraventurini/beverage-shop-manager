@@ -1,7 +1,7 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.6.1
-> **Status**: Draft — Code-complete MVP (Phases 0 → G); awaiting Google OAuth grant, training and production cut-over
+> **Version**: 1.7.0
+> **Status**: Draft — Code-complete MVP (Phases 0 → G); awaiting Google OAuth grant, training and production cut-over. **F18 WhatsApp Inbox specced as the next MVP+ increment (Phase H, milestone M8)**
 > **Created**: 2026-05-09
 > **Last Updated**: 2026-05-19
 > **Author**: Anderson de Oliveira Venturini
@@ -59,6 +59,7 @@ Snapshot of the codebase against the MVP feature list (last audited **2026-05-19
 | F14 | Initial Catalog Seeder | ✅ Done (deviation) | Hard-coded curated catalog (19 categories, ~150 SKUs). See **Deviations** below |
 | F15 | Automated Backup to Google Drive | 🟡 Code substrate done; awaiting OAuth grant | `fa:backup-database` command + `BackupRun` model + `GoogleDriveUploader` seam. Owner runs the one-time OAuth grant per [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) |
 | F16 | Two-Way Sync with Google Contacts | 🟡 Code substrate done; awaiting OAuth grant | `GoogleContactsSync` service (pull + push) with last-write-wins reconciliation, sync-token persistence, paused-flag respect |
+| F18 | WhatsApp Conversational Inbox (Evolution API) | ⛔ New scope — **next MVP+ increment** | Self-hosted Evolution alongside FA app; matched by normalized phone; **operator-initiated only** (no auto-reply); "Iniciar venda" pre-fills CreateSale. See Phase H in [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) |
 
 **Cross-cutting**: role-based access (`manager` / `attendant` / `deliverer`) enforced through six Filament policies + a locked access-matrix test; **NFR-01 brand compliance gate** automated; password reset routes wired (production Gmail SMTP credentials land with the F15/F16 OAuth grant).
 
@@ -448,6 +449,45 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 - [⚠️] Tag/group on the Google side identifying the contact as an FA customer — env var `GOOGLE_CONTACTS_GROUP` defined in the runbook; the actual People API group filter ships when the live client is wired
 - [⚠️] A new Google address with no lat/lng triggers automatic geocoding and fee recompute — `AddressGeocoder` already does this for local CRUD; the sync→geocode chain is wired via the existing `CustomerAddress::saved` hook; needs end-to-end verification on staging after the OAuth grant
 - [⚠️] Dependency: `google/apiclient` + `google/apiclient-services` — declared in the runbook; installed on the host alongside the OAuth credentials
+
+---
+
+#### F18: WhatsApp Conversational Inbox via Evolution API (RF15)
+
+**Description**: Self-hosted Evolution API instance (Docker Compose service alongside the FA app) bridges the FA WhatsApp number into a conversational inbox inside the admin panel. Inbound messages land in a `whatsapp_conversations` thread, matched to an existing customer by **normalized phone**; when no match exists, the operator promotes the conversation to a new customer in one click. Operators (manager + attendant) read and reply through the panel — the messaging UI stays purely **operator-initiated**, no auto-replies or programmatic blasts, to keep the risk of WhatsApp banning the FA number low. A header action "Iniciar venda" opens `CreateSale` pre-filled with `customer_id`, `type = delivery` and the primary address.
+
+**Story**: As an attendant, I want to handle the depot's WhatsApp orders from inside the system instead of switching to the phone, so the conversation is logged, every reply happens with the customer's purchase history one click away, and a new sale starts pre-filled.
+
+**Scope discipline** (resolved 2026-05-19):
+- **Text-only in MVP** — no inbound or outbound media (photos / audio / stickers). Promotes to F18.1 polish.
+- **No auto-reply / no scheduled broadcasts** in MVP — operator always clicks "Enviar". Minimizes the risk of Meta banning the existing FA number.
+- **Self-hosted Evolution API** — runs inside the FA `docker-compose.yml`; no third-party SaaS. QR-scan binding the FA number is a one-time operation.
+
+**Acceptance criteria**:
+- [ ] Evolution API service in `docker-compose.yml` with the QR-scan flow + persistent volume so re-binds are rare
+- [ ] Inbound webhook `POST /webhooks/whatsapp/incoming` verifies an HMAC signature against `WHATSAPP_WEBHOOK_SECRET`; idempotent by Evolution message id
+- [ ] `whatsapp_conversations` table — one row per (customer phone, instance). `customer_id` nullable; `last_message_at` index
+- [ ] `whatsapp_messages` table — `conversation_id`, `direction` (`in` / `out`), `body`, `evolution_id`, `user_id` (outbound only), `sent_at`, `received_at`
+- [ ] Inbound matcher: normalize the phone (strip `()-+ ` and the `55` country prefix), look up `customer_phones.number`; on hit, attach `customer_id`; on miss, leave null + flag the conversation as "unmatched"
+- [ ] `WhatsAppInbox` Filament page under **Operação** (manager + attendant only, deliverer blocked via `canAccess()`). Two columns: conversation list (left), thread (right). Polls every 15 s via `wire:poll` *or* uses Reverb broadcast when wired in F18.1
+- [ ] Reply input sends through `WhatsAppGateway::send($conversation, $body, $user)` (Evolution API client); persists the outbound message; logs an `audit_logs` row per outbound
+- [ ] Header action **"Iniciar venda"** opens `CreateSale` with `customer_id`, `type=delivery`, `address_id=primary` pre-filled when the conversation is matched
+- [ ] When the conversation is unmatched, an inline action **"Cadastrar novo cliente"** opens `CreateCustomer` with the WhatsApp phone pre-filled in the phones repeater + the conversation is rebound to the new customer
+- [ ] Optional **"Avisar cliente: venda confirmada"** action on `EditSale` that sends `Sua venda #{id} está a caminho. Total: R$ X,XX.` through the gateway. Disabled for counter sales and for sales without a customer
+- [ ] Settings page surfaces: Evolution API base URL (env-driven), instance status (`connected` / `disconnected`), last inbound webhook timestamp, button **"Forçar nova vinculação"** (returns a fresh QR-code image)
+- [ ] Operator-initiated only — no scheduled command and no automatic on-event reply. The codebase exposes no method that sends without an explicit user action
+
+**Verification**: a Pest suite `tests/Feature/Services/WhatsAppGatewayTest.php` faking the HTTP layer covers inbound parse, normalized-phone matching, outbound send, and the `WhatsAppInbox` Livewire interactions cover the reply + "Iniciar venda" + "Cadastrar novo cliente" flows.
+
+**Out of MVP (deferred to F18.1)**:
+- Bidirectional media (photo / audio receive + send) — adds storage, MIME validation, audio player.
+- Templated quick replies ("Oi! Trabalhamos com galão 20L (R$ 15) e 10L (R$ 10). Qual?").
+- Recommendation chips based on the customer's purchase history.
+- Reverb-broadcast push for the inbox (replaces the `wire:poll`).
+
+**Out of scope (deferred to a future major)**:
+- Migration to the official Meta WhatsApp Business API + template approval workflow.
+- Customer-facing bot / IVR / menu of products.
 
 ---
 
@@ -1064,6 +1104,7 @@ gantt
 | M5: Reports | Separated listings + admin dashboard | 2026-07-14 | ✅ Done — Phase E shipped WaterSales + GeneralSales + 4 dashboard widgets |
 | M6: Google integrations | Automated Drive backup + 2-way Contacts sync + Gmail SMTP | 2026-07-30 | 🟡 Code substrate done — owner runs the one-time OAuth grant per [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) |
 | M7: Go-live | Hardening + training + production | 2026-08-20 | 🟡 Runbook ready — on-site training + parallel-usage week per [`docs/RUNBOOK_DEPLOY.md`](../RUNBOOK_DEPLOY.md) |
+| M8: WhatsApp inbox (F18) | Self-hosted Evolution API + conversational inbox + "Iniciar venda" hook | 2026-09-15 | ⛔ Spec done — Phase H starts after M7 go-live |
 
 ---
 
@@ -1141,3 +1182,4 @@ gantt
 | 1.5.1 | 2026-05-18 | Anderson de Oliveira Venturini | Promoted the brand visual identity from a §6 UX subsection to a first-class cross-cutting requirement: new **NFR-01 — Brand Compliance** in §4 with explicit acceptance criteria + verification path. The §6 *Visual Identity* subsection now points to NFR-01 and to the new textual source-of-truth [`docs/DESIGN.md`](../DESIGN.md), which distills the printable brand manual into token tables, usage rules and a component checklist. `IMPLEMENTATION_PLAN.md` gains a **Phase 0 — Brand Retrofit** (CSS variables, `config/brand.php`, Blade components) and a "Brand compliance" exit-criterion line on every other phase |
 | 1.6.0 | 2026-05-19 | Anderson de Oliveira Venturini | **Code-complete MVP pass** — every PRD feature F01–F16 ships in code. Phases A→E delivered as feature commits; Phase F as the substrate + [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) for the one-time OAuth grant; Phase G as the [`docs/RUNBOOK_DEPLOY.md`](../RUNBOOK_DEPLOY.md) covering tag → deploy → verify → train → go-live. Status changes to "Draft — Code-complete MVP". Implementation Status table flipped to ✅/🟡-with-runbook across the board. Milestone column updated. PRD now reads top-to-bottom as the shipped product spec, with the remaining work captured as human runbook steps, not code TODOs |
 | 1.6.1 | 2026-05-19 | Anderson de Oliveira Venturini | **Doc-refresh pass.** §4 acceptance criteria flipped to match the shipped reality: F01 (3/3), F02 (4/4), F03 (5/5), F04 (6/7 — empty-shell global counter intentionally absent), F05 (4/4), F06 (5/5), F07 (6/6), F09 (8/9 — fee-row authorization is a P1 polish), F10 (4/6 — toggle + infolist are P1 polish), F11 (4/5 — explicit filter chips are P1 polish), F12 (5/6 — CSV/XLSX export is P1 polish), F13 (4/7 — date-range filter + top-customers chart + PDF export are P1 polish), F15 + F16 annotated `⚠️ code substrate done, awaiting OAuth grant`. README rewritten with current doc map, fa-test:php84 quickstart, role matrix and code map. New top-level [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) consolidates the six tracks of pending work |
+| 1.7.0 | 2026-05-19 | Anderson de Oliveira Venturini | **New scope: F18 — WhatsApp Conversational Inbox via Evolution API.** Specced as the next MVP+ increment (Phase H, milestone M8 — target 2026-09-15). Scope discipline decisions captured: self-hosted Evolution on the FA host, matched by normalized phone, operator-initiated only (no auto-reply / no scheduled broadcasts) to keep ban risk low on the existing FA number; text-only in MVP. Header action "Iniciar venda" opens CreateSale pre-filled. Implementation Status table grew a F18 row; Milestones grew M8. Companion plan landed as Phase H in [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) and as Track 7 in [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) |

@@ -191,6 +191,30 @@ Ships **before** Phase A. Locks the substrate that makes NFR-01 enforceable on e
 
 ---
 
+### Phase H — WhatsApp Conversational Inbox via Evolution API (M8 — new scope)
+
+Starts after M7 go-live. Implements PRD [F18](./prd/prd-fa-distribuidora.md#f18-whatsapp-conversational-inbox-via-evolution-api-rf15). Decisions locked 2026-05-19 (see PRD change log v1.7.0).
+
+| Step | Deliverable | Effort | Notes |
+|------|-------------|--------|-------|
+| H.1 | Add the **Evolution API service** to `docker-compose.yml` with a persistent volume for session state. Document the one-time QR-scan in `docs/RUNBOOK_WHATSAPP.md` (created in this phase) | S | One container, one env block, one volume |
+| H.2 | **Migrations + models** — `whatsapp_conversations` (customer_id nullable, phone_normalized, last_message_at, instance, unmatched flag) and `whatsapp_messages` (conversation_id, direction enum, body, evolution_id unique, user_id nullable, sent_at, received_at). `php artisan make:model … -m` | S | |
+| H.3 | **`WhatsAppGateway` interface + `EvolutionApiGateway` impl.** HTTP-fake-friendly seams: `send($conversation, $body, $user)`, `verifySignature($payload, $signature)`, `currentInstanceStatus()`. Wired into the container so tests inject a stub | M | Same pattern as Phase F's GoogleDriveUploader |
+| H.4 | **Inbound webhook** — `POST /webhooks/whatsapp/incoming` with HMAC signature middleware. Idempotent by `evolution_id`. Normalizes the phone (`+`, `()-`, country prefix `55`) and matches `customer_phones.number`. Queued for fast 200 response | M | |
+| H.5 | **`WhatsAppInbox` Filament page** under Operação, manager + attendant only. Two-column layout: conversations (left) + thread + reply box (right). `wire:poll.15s`. Brand wave-divider header. Filters: unmatched / unread / last 7 days | L | Visual centerpiece |
+| H.6 | **Reply send action** calls `WhatsAppGateway::send`; persists outbound row; records `audit_logs` (event `whatsapp_outbound`, user_id, body) | S | |
+| H.7 | **"Iniciar venda"** header action opens `CreateSale` with `customer_id` + `type=delivery` + `address_id=primary` pre-filled | S | Single `->url()` call |
+| H.8 | **"Cadastrar novo cliente"** inline action for unmatched conversations. Pre-fills the WhatsApp phone in the phones repeater; rebinds the conversation after save | S | |
+| H.9 | **Optional "Avisar cliente: venda confirmada"** action on `EditSale` sends `Sua venda #{id} está a caminho. Total: R$ X,XX.`. Logged in audit_logs. Disabled for counter sales / sales without a customer | S | Only on explicit operator click |
+| H.10 | **Settings page** surfaces Evolution base URL (read-only), instance status, last inbound webhook timestamp, "Forçar nova vinculação" button rendering a fresh QR-code | M | |
+| H.11 | **Pest coverage** — `EvolutionApiGatewayTest` (HTTP fakes), `WhatsAppInboxTest` (role gating + reply + Iniciar venda + Cadastrar cliente), `IncomingWhatsAppTest` (signed payload, dedupe, normalization, unmatched flag) | M | |
+
+**Scope discipline**: text-only, operator-initiated only, no auto-reply, no scheduled broadcasts. Risk-acknowledged use of an existing FA number through a non-official API; the `WhatsAppGateway` interface is the seam to migrate to the official Meta Business API in a future major.
+
+**Exit criterion**: an attendant signs in, sees an inbound "Boa tarde, quero um galão", replies "Sim, sai já", clicks **Iniciar venda**, completes CreateSale, hits Confirm, then **Avisar cliente: venda confirmada** — the customer's WhatsApp shows both replies. All gated through the operator. Brand compliance test green; full Pest suite green.
+
+---
+
 ## Dependency graph
 
 ```mermaid
@@ -214,6 +238,11 @@ flowchart LR
     F1 --> F3[F.3 Contacts]
     F1 --> F4[F.4 SMTP]
     C2 --> F3
+    G4[G.4 Go-live] --> H1[H.1 Evolution service]
+    H1 --> H4[H.4 Inbound webhook]
+    H1 --> H5[H.5 WhatsAppInbox page]
+    H5 --> H7[H.7 Iniciar venda]
+    H4 --> H8[H.8 Cadastrar novo cliente]
 ```
 
 The two longest paths are **A.2 → C.5 → D.1 → D.2 → E.2** (sales hardening + dashboard) and **F.1 → F.3** (contacts sync). Phase F can run in parallel with Phase E once the Google account is provisioned.
@@ -262,8 +291,10 @@ docker run --rm -v "$PWD:/app" -w /app fa-test:php84 ./vendor/bin/pest --paralle
 | F | ~2 weeks | 2 |
 | G | ~1 week | 1 |
 | **MVP total** | **~10.7 weeks** | **10–11 weeks** |
+| H (post-MVP) | ~2.5 weeks | 2.5 |
+| **MVP + Phase H** | **~13.2 weeks** | **13 weeks** |
 
-The PRD's go-live target is 2026-08-20 (~13 weeks from the snapshot date). The plan fits the target with ~2 weeks of buffer **only if** Phase F (Google integrations) starts in parallel with Phase E. Sequential execution slips go-live by 2–3 weeks. Phase 0 absorbs into the existing buffer.
+The PRD's go-live target is 2026-08-20 (~13 weeks from the snapshot date). The plan fits the target with ~2 weeks of buffer **only if** Phase F (Google integrations) starts in parallel with Phase E. Sequential execution slips go-live by 2–3 weeks. Phase 0 absorbs into the existing buffer. Phase H (WhatsApp) starts after the M7 cut-over and targets M8 at **2026-09-15** (~4 weeks after M7).
 
 ---
 
@@ -274,3 +305,4 @@ The PRD's go-live target is 2026-08-20 (~13 weeks from the snapshot date). The p
 | 1.0.0 | 2026-05-18 | Anderson de Oliveira Venturini | Initial plan — companion to PRD v1.5.0. Sequences A → G with cluster-level breakdown, dependency graph, risk callouts and effort estimate |
 | 1.1.0 | 2026-05-18 | Anderson de Oliveira Venturini | Added **Phase 0 — Brand Retrofit** (CSS variables, `config/brand.php`, `<x-fa.wave-divider />`, automated `tests/Feature/DesignSystemTest.php` compliance gate) and a "Brand compliance" exit-criterion line on every other phase. References PRD [NFR-01](./prd/prd-fa-distribuidora.md#nfr-01--brand-compliance) and [`docs/DESIGN.md`](./DESIGN.md). Dependency graph + effort table updated |
 | 2.0.0 | 2026-05-19 | Anderson de Oliveira Venturini | **All phases shipped in code.** Phase A (F01 Depot + roles + access matrix) → `1f5d841`. Phase B (F05 Cargo + F06 write-off + F03 price warning) → `4303911`. Phase C (F10 calculator + F02 recompute + F09 audit) → `6be83aa`. Phase D (F09 price gate + receipt + F11 dispatch board) → `b3873ff`. Phase E (F12 separated listings + F13 dashboard widgets) → `6689f46`. Phase F substrate (F15 backup command + F16 contacts sync seams + `RUNBOOK_GOOGLE.md`) → `534a41b`. Phase G ships [`docs/RUNBOOK_DEPLOY.md`](./RUNBOOK_DEPLOY.md). Final Pest run: 132 passed, 1 pre-existing skip, 395 assertions |
+| 2.1.0 | 2026-05-19 | Anderson de Oliveira Venturini | **New scope: Phase H — WhatsApp Conversational Inbox via Evolution API** (PRD [F18](./prd/prd-fa-distribuidora.md#f18-whatsapp-conversational-inbox-via-evolution-api-rf15)). 11 steps from `docker-compose` Evolution service through webhook + matcher + inbox page + "Iniciar venda" + "Cadastrar novo cliente" + outbound + Pest coverage. Scope discipline locked: self-hosted Evolution, manager + attendant only, normalized-phone match, text-only, operator-initiated only (no auto-reply / no scheduled broadcasts). Effort ~2.5 weeks; targets M8 (2026-09-15). Dependency graph + estimated-effort table updated |

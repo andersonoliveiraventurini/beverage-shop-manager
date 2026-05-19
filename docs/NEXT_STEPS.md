@@ -91,6 +91,35 @@ Pick these in priority order. None blocks go-live.
 
 ---
 
+## Track 7 — WhatsApp Conversational Inbox via Evolution API (F18 · Phase H · M8)
+
+**Goal**: cliente manda mensagem no WhatsApp → atendente lê dentro do sistema, responde, e clica "Iniciar venda" sem trocar de aplicativo. Novos contatos viram cadastros em um clique.
+
+Scope decisions locked 2026-05-19 (see PRD §F18):
+
+- **Self-hosted Evolution API** alongside the FA Docker Compose (no SaaS).
+- **Manager + attendant** only (deliverer blocked).
+- **Match by normalized phone** against `customer_phones.number`; unmatched conversations expose a "Cadastrar novo cliente" inline action.
+- **"Iniciar venda"** button in the conversation panel opens `CreateSale` with `customer_id` + `type=delivery` + `address_id=primary` pre-filled.
+- **Text-only in MVP** (media in F18.1).
+- **Operator-initiated only** — no auto-reply, no scheduled broadcasts. Minimizes WhatsApp ban risk on the existing FA number.
+
+| Step | Owner | Effort | Notes |
+|---|---|---|---|
+| 7.1 | Provision the WhatsApp number for system use (one-time QR-scan after H.1 lands) | Anderson + Manager | 10 min | FA's existing number; minimize programmatic use |
+| 7.2 | Implementation Phase H (steps H.1–H.11) | Anderson | ~2.5 weeks | See [`docs/IMPLEMENTATION_PLAN.md`](IMPLEMENTATION_PLAN.md#phase-h--whatsapp-conversational-inbox-via-evolution-api-m8--new-scope) |
+| 7.3 | Smoke-test on staging: send/receive at least one round-trip; create one customer from an unmatched conversation; open one "Iniciar venda" | Anderson + Manager | 1 h | Document anomalies in `docs/POSTMORTEM_F18.md` |
+| 7.4 | Train manager + attendants on the new inbox (extension of Track 1.6) | Anderson + Manager | 1 h | Quick-reference card |
+| 7.5 | Bump PRD to v1.8.0 marking F18 acceptance criteria checked | Anderson | 5 min | Final closure |
+
+**Blockers**: Phase H **must wait for M7 cut-over** so the integration ships against production data, not a half-seeded staging.
+
+**Out of MVP (deferred to F18.1)**: bidirectional media, templated quick replies, recommendation chips based on purchase history, Reverb-broadcast push.
+
+**Risk + mitigation**: WhatsApp may ban the FA number for non-official API usage. Mitigations baked into Phase H: operator-initiated only, low volume (≤ 50 msg/day expected), and the `WhatsAppGateway` interface keeps a clean migration path to the official Meta Business API in a future major.
+
+---
+
 ## Track 6 — Documentation maintenance (continuous)
 
 The PRD and the plan are now the **operational truth** for the project. Keep them in sync:
@@ -108,7 +137,8 @@ A 5-minute discipline that keeps the project legible for the next person — hum
 
 | Status | What's left |
 |---|---|
-| ✅ Code | Nothing — every PRD feature ships in code |
-| 🟡 Operational | Push commits · OAuth grant · on-site training · go-live |
+| ✅ Code (MVP F01–F16) | Nothing — every PRD MVP feature ships in code |
+| 🟡 Operational (M6 + M7) | Push commits · OAuth grant · on-site training · go-live |
 | 🟡 Polish | ~10 small P1 items in PRD §4 (Track 3) |
+| ⛔ New scope (M8) | **F18 WhatsApp inbox (Track 7)** — starts after M7 go-live |
 | ⛔ Out of MVP | Post-MVP features (Track 5) |
