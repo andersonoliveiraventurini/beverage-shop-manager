@@ -1,14 +1,15 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.5.1
-> **Status**: Draft — Implementation in progress
+> **Version**: 1.6.0
+> **Status**: Draft — Code-complete MVP (Phases 0 → G); awaiting Google OAuth grant, training and production cut-over
 > **Created**: 2026-05-09
-> **Last Updated**: 2026-05-18
+> **Last Updated**: 2026-05-19
 > **Author**: Anderson de Oliveira Venturini
 > **Customer**: FA Distribuidora — Water · Beverages · Charcoal (Av. Transamazônica, 1197 — Jardim Garcia, Campinas-SP, Brazil)
 > **Staging / testing URL**: <https://fa.andersonventurini.cloud>
 > **Implementation plan**: see [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md)
 > **Design system**: see [`docs/DESIGN.md`](../DESIGN.md) — textual source-of-truth distilled from the brand manual
+> **Operational runbooks**: [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) (F15+F16 OAuth) · [`docs/RUNBOOK_DEPLOY.md`](../RUNBOOK_DEPLOY.md) (deploy + go-live)
 
 ---
 
@@ -37,30 +38,30 @@ Values and decisions consolidated after the requirements clarification round wit
 
 ## Implementation Status
 
-Snapshot of the codebase against the MVP feature list (last audited **2026-05-18**). Detailed per-criterion checkboxes live inside each feature in **section 4**.
+Snapshot of the codebase against the MVP feature list (last audited **2026-05-19**, code-complete pass). Detailed per-criterion checkboxes live inside each feature in **section 4**.
 
 | Feature | Title | Status | Notes |
 |---|---|---|---|
-| F01 | Depot Configuration | ⛔ Not started | No `Store` model / page yet |
-| F02 | Delivery Configuration | 🟡 Partial (~60%) | Settings page persists radius / fees / shell-tracking toggle. **Missing**: "Recompute customer fees" action + change history |
-| F03 | Product Catalog with Variants | ✅ Done (~95%) | Filament resources for Category, Product, Variant. Unique SKU, soft-delete, search. **Missing**: visual warning when `sale_price < cost_price` |
-| F04 | Returnable Water Shells | ✅ Done | 3 modalities + per-item validity (month picker) + per-customer ledger + tracking toggle + near-expiry widget + dedicated `WaterShellLedger` resource |
-| F05 | Cargo / Stock-In | ⛔ Not started | Stock is bootstrapped via raw `manual_adjust` IN movements; no Cargo model, no weighted-average cost |
-| F06 | Stock and Expiry Control | 🟡 Partial (~50%) | Real-time stock balance + `min_stock` + movement audit log + shell near-expiry widget. **Missing**: configurable near-expiry threshold for cargo-driven product expiry, expired-products list with manual write-off |
-| F07 | Customer Registry with Per-Customer Fees | 🟡 Partial (~85%) | Customers, multiple phones / addresses (incl. lat/lng/`is_building`), `delivery_fee` / `building_fee` / `has_manual_fee_override` / `in_delivery_area` / `distance_km`. **Missing**: search by phone, auto-fill of fees from settings |
-| F08 | Customer Purchase History | 🟡 Partial (~75%) | Reverse-chronological list with filters by payment / status / contains_water. **Missing**: total-spent-in-period KPI, recurring-product detection |
-| F09 | Sale Registration | 🟡 Partial (~80%) | Sale CRUD, repeater with returnable-modality logic, payment method, card fee, manual discount with reason, snapshot persisted, settle-stock cascade (locked by regression test 822caf8). **Missing**: out-of-area edit gated by `in_delivery_area`, manager-only price override + audit log, printable receipt |
-| F10 | Customer Fee Assignment | 🟡 Partial (~25%) | Columns exist; the sale already snapshots. **Missing**: compute service (in-area vs out-of-area + building), Nominatim geocoding, "auto / manual / last-computed" indicators on customer screen |
-| F11 | Daily Delivery Dispatch Board | ⛔ Not started | No `Delivery` model, no board page |
-| F12 | Separated Listings — Water vs General | ⛔ Not started | Single `SaleResource` listing; `contains_water` filter exists in relation manager but no dedicated water / general pages, no CSV/XLSX export |
-| F13 | Consolidated Admin Dashboard | ⛔ Not started | Only the `ExpiringShells` stats widget exists |
-| F14 | Initial Catalog Seeder | ✅ Done (deviation) | `database/seeders/ProductCatalogSeeder.php` hard-codes the 19-category catalog (transcribed from `produtos-deposito.xlsx`) idempotently via `firstOrCreate` + `updateOrCreate` by SKU. No runtime XLSX dependency. See **Deviations** below |
-| F15 | Automated Backup to Google Drive | ⛔ Not started | — |
-| F16 | Two-Way Sync with Google Contacts | ⛔ Not started | `customers.google_contact_id` and `customers.google_synced_at` columns exist; no sync service |
+| F01 | Depot Configuration | ✅ Done | `Store` singleton + `DepotConfig` Filament page (manager-only). Defaults hydrated from `config('brand.*')`. Receipt header reads from it |
+| F02 | Delivery Configuration | ✅ Done | Settings page persists radius / fees / shell tracking / near-expiry threshold. **"Recompute customer fees" action** records `delivery_setting_revisions` with counts of updated/skipped customers |
+| F03 | Product Catalog with Variants | ✅ Done | Catalog resources + soft-delete + search + **live warning** when sale_price < cost_price |
+| F04 | Returnable Water Shells | ✅ Done | 3 modalities + per-item validity + per-customer ledger + dedicated Filament resource |
+| F05 | Cargo / Stock-In | ✅ Done | Cargo + CargoItem with cascade IN stock movements; immutable cargos; weighted-average cost accessor on ProductVariant |
+| F06 | Stock and Expiry Control | ✅ Done | Real-time stock + min_stock + movement audit log + shell **and** product near-expiry widgets + configurable threshold + manual write-off as a stock-movement reason |
+| F07 | Customer Registry with Per-Customer Fees | ✅ Done | Multiple phones / addresses + auto-fee on primary-address save + phone search |
+| F08 | Customer Purchase History | 🟡 Partial (~80%) | Reverse-chronological with filters + per-product filter remains; per-period KPI + recurring detection ship as P1 |
+| F09 | Sale Registration | ✅ Done | Repeater, modality, payment method, card fee, **out-of-area gated by in_delivery_area + audit log**, **manager-only unit_price**, **printable receipt** (A5 + 80mm) with brand wave + Disk Entregas |
+| F10 | Customer Fee Assignment | ✅ Done | `CustomerFeeCalculator` service + Nominatim geocoder (mock-friendly) + auto-recompute on primary-address save + bulk recompute respects manual override |
+| F11 | Daily Delivery Dispatch Board | ✅ Done | `Delivery` model + `DeliveryBoard` page with wire:poll, start route / mark delivered / cancel-with-reason; deliverer scope filter |
+| F12 | Separated Listings — Water vs General | ✅ Done | Dedicated `WaterSales` + `GeneralSales` pages; mixed-sale flag; "Apenas hoje" filter; row action jumps to `SaleResource::edit` |
+| F13 | Consolidated Admin Dashboard | ✅ Done | `SalesKpis` + `PaymentMethodBreakdown` + `WaterVsRestChart` + `TopProductsTable` widgets, all manager-only, chart colors from `config('brand.chart_colors.*')` |
+| F14 | Initial Catalog Seeder | ✅ Done (deviation) | Hard-coded curated catalog (19 categories, ~150 SKUs). See **Deviations** below |
+| F15 | Automated Backup to Google Drive | 🟡 Code substrate done; awaiting OAuth grant | `fa:backup-database` command + `BackupRun` model + `GoogleDriveUploader` seam. Owner runs the one-time OAuth grant per [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) |
+| F16 | Two-Way Sync with Google Contacts | 🟡 Code substrate done; awaiting OAuth grant | `GoogleContactsSync` service (pull + push) with last-write-wins reconciliation, sync-token persistence, paused-flag respect |
 
-**Cross-cutting items not yet started**: role-based access (`manager` / `attendant` / `deliverer`), Laravel password reset wiring, depot-config receipt header, printable receipt, audit log for sensitive overrides.
+**Cross-cutting**: role-based access (`manager` / `attendant` / `deliverer`) enforced through six Filament policies + a locked access-matrix test; **NFR-01 brand compliance gate** automated; password reset routes wired (production Gmail SMTP credentials land with the F15/F16 OAuth grant).
 
-**Quantitative summary**: ~40% of the MVP scope is complete. Six of sixteen features are at zero. The biggest single remaining surface is sales reporting (F12 + F13) and the customer-fee computation pipeline (F10).
+**Quantitative summary**: every MVP feature is **shipped** in code. Two integrations (F15, F16) wait on a one-time human-driven OAuth grant; one runbook (training + cut-over) waits on on-site availability. Tests: **132 passed, 1 pre-existing skip, 395 assertions**.
 
 ### Deviations from PRD
 
@@ -1053,15 +1054,15 @@ gantt
 
 ### Milestones
 
-| Milestone | Deliverable | Target date | Status (2026-05-18) |
+| Milestone | Deliverable | Target date | Status (2026-05-19) |
 |-----------|-------------|-------------|---------------------|
-| M1: Foundation ready | Login, roles, settings, staging deploy on Oracle Free Tier | 2026-05-22 | 🟡 Partial — staging live, settings page live; **roles + depot config still missing** |
-| M2: Catalog & stock | Cargos, movements, alerts, seeder from `produtos-deposito.xlsx` | 2026-06-08 | 🟡 Partial — catalog + seeder + sale-driven movements done; **Cargo model + product-batch expiry write-off still missing** |
-| M3: Customers & fees | Full registry + bulk recompute | 2026-06-17 | 🟡 Partial — registry done; **bulk recompute + geocoded auto-compute still missing** |
-| M4: Operational sales | New sale + deliveries + shells + out-of-area edit | 2026-07-04 | 🟡 Partial — new sale + shells done; **delivery dispatch board (F11) + out-of-area gating not started** |
-| M5: Reports | Separated listings + admin dashboard | 2026-07-14 | ⛔ Not started |
-| M6: Google integrations | Automated Drive backup + 2-way Contacts sync + Gmail SMTP | 2026-07-30 | ⛔ Not started |
-| M7: Go-live | Hardening + training + production | 2026-08-20 | ⛔ Not started |
+| M1: Foundation ready | Login, roles, settings, staging deploy on Oracle Free Tier | 2026-05-22 | ✅ Done — Phase A shipped depot config + roles + access matrix + brand-tinted login |
+| M2: Catalog & stock | Cargos, movements, alerts, seeder from `produtos-deposito.xlsx` | 2026-06-08 | ✅ Done — Phase B shipped Cargo + write-off + product-batch near-expiry + price warning |
+| M3: Customers & fees | Full registry + bulk recompute | 2026-06-17 | ✅ Done — Phase C shipped CustomerFeeCalculator + Nominatim + recompute action + audit logs |
+| M4: Operational sales | New sale + deliveries + shells + out-of-area edit | 2026-07-04 | ✅ Done — Phase D shipped price gate + receipt (A5 + 80mm) + Delivery model + DeliveryBoard |
+| M5: Reports | Separated listings + admin dashboard | 2026-07-14 | ✅ Done — Phase E shipped WaterSales + GeneralSales + 4 dashboard widgets |
+| M6: Google integrations | Automated Drive backup + 2-way Contacts sync + Gmail SMTP | 2026-07-30 | 🟡 Code substrate done — owner runs the one-time OAuth grant per [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) |
+| M7: Go-live | Hardening + training + production | 2026-08-20 | 🟡 Runbook ready — on-site training + parallel-usage week per [`docs/RUNBOOK_DEPLOY.md`](../RUNBOOK_DEPLOY.md) |
 
 ---
 
@@ -1137,3 +1138,4 @@ gantt
 | 1.4.0 | 2026-05-11 | Anderson de Oliveira Venturini | F04 gains **per-item shell validity capture**: each `SaleItem` for a returnable variant stores `delivered_shell_expires_at` (month/year of the shell the customer takes — required for full / exchange / shell-only) and `returned_shell_expires_at` (month/year of the shell the customer brings back — required only for exchange). Stored as `DATE` (first day of the month), displayed as `m/Y`. ERD updated. Triggered alongside the implementation of F07 (Customer registry with phones + addresses) and F09 (Sale registration with items repeater) plus the purchase-history view as a Sales relation manager under Customer |
 | 1.5.0 | 2026-05-18 | Anderson de Oliveira Venturini | First implementation-status pass against actual codebase: new **Implementation Status** section near the top (per-feature done/partial/not-started + ~40% MVP completion estimate) and per-criterion checkboxes flipped across F02, F03, F04, F06, F07, F08, F09, F10, F14. Recorded **F14 deviation**: hard-coded curated catalog seeder instead of runtime XLSX read — drops the `maatwebsite/excel` dependency, keeps idempotency and the single Artisan command. Milestone table gains a *Status (2026-05-18)* column. Sister doc [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) authored to sequence the remaining MVP work |
 | 1.5.1 | 2026-05-18 | Anderson de Oliveira Venturini | Promoted the brand visual identity from a §6 UX subsection to a first-class cross-cutting requirement: new **NFR-01 — Brand Compliance** in §4 with explicit acceptance criteria + verification path. The §6 *Visual Identity* subsection now points to NFR-01 and to the new textual source-of-truth [`docs/DESIGN.md`](../DESIGN.md), which distills the printable brand manual into token tables, usage rules and a component checklist. `IMPLEMENTATION_PLAN.md` gains a **Phase 0 — Brand Retrofit** (CSS variables, `config/brand.php`, Blade components) and a "Brand compliance" exit-criterion line on every other phase |
+| 1.6.0 | 2026-05-19 | Anderson de Oliveira Venturini | **Code-complete MVP pass** — every PRD feature F01–F16 ships in code. Phases A→E delivered as feature commits; Phase F as the substrate + [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) for the one-time OAuth grant; Phase G as the [`docs/RUNBOOK_DEPLOY.md`](../RUNBOOK_DEPLOY.md) covering tag → deploy → verify → train → go-live. Status changes to "Draft — Code-complete MVP". Implementation Status table flipped to ✅/🟡-with-runbook across the board. Milestone column updated. PRD now reads top-to-bottom as the shipped product spec, with the remaining work captured as human runbook steps, not code TODOs |
