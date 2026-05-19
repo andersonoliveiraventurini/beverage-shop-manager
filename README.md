@@ -2,7 +2,7 @@
 
 Full-stack management system for **FA Distribuidora** (Água · Bebidas · Carvão — Av. Transamazônica 1197, Jardim Garcia, Campinas-SP). Handles the product catalog with multiple variants, customer registry with per-customer delivery and building fees, cargo-driven inventory with batch expiry, sales with multiple payment methods (cash, PIX, debit, credit), a daily delivery dispatch board, an optional per-customer returnable water-gallon ledger, separated water-vs-general sales listings and a consolidated admin dashboard.
 
-> **Status (2026-05-19)**: code-complete MVP. Every PRD feature F01–F16 ships in code. F15/F16 await a one-time Google OAuth grant (see [`docs/RUNBOOK_GOOGLE.md`](docs/RUNBOOK_GOOGLE.md)); production cut-over awaits on-site training (see [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md)).
+> **Status (2026-05-19)**: code-complete MVP. Every PRD feature F01–F16 ships in code. F15/F16 await a one-time Google OAuth grant (see [`docs/RUNBOOK_GOOGLE.md`](docs/RUNBOOK_GOOGLE.md)); production cut-over awaits on-site training (see [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md)). **F18 WhatsApp Inbox** is specced as the next increment after M7 cut-over (see [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md) Track 4).
 
 ## Stack
 
@@ -36,7 +36,7 @@ Both environments share the same schema and `ProductCatalogSeeder`. Operational 
 | [`docs/DESIGN.md`](docs/DESIGN.md) | Design system distilled from the brand manual. Token tables, Blade components, source-of-truth map |
 | [`docs/RUNBOOK_GOOGLE.md`](docs/RUNBOOK_GOOGLE.md) | One-time runbook for the Google OAuth grant that unlocks F15 (Drive backup) + F16 (Contacts sync) |
 | [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md) | Deploy + go-live runbook (tag → deploy → verify → train → cut-over) |
-| [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md) | Six-track roadmap of what remains. Read this when you sit down to work |
+| [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md) | Eight-track roadmap in execution order — Push → M7 cut-over → M6 Google live → M8 WhatsApp → polish → hardening → post-MVP → doc maintenance. Read this when you sit down to work |
 | [`FA Distribuidora · Print.pdf`](FA%20Distribuidora%20%C2%B7%20Print.pdf) | Canonical visual brand manual (palette, typography, logo, mockups) |
 | [`produtos-deposito.xlsx`](produtos-deposito.xlsx) | Reference catalog spreadsheet (already transcribed into `ProductCatalogSeeder`) |
 
