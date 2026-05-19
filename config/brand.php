@@ -37,4 +37,19 @@ return [
         'mobile' => '(19) 98177-8284',
         'whatsapp' => '(19) 98177-8284',
     ],
+
+    /*
+     * Chart.js consumes RGB / rgba strings, not CSS variables. We mirror the
+     * tokens from docs/DESIGN.md §2 here so every dashboard widget reads them
+     * from a single source. Keep these in sync with theme.css when tokens
+     * change.
+     */
+    'chart_colors' => [
+        'azul_profundo' => 'rgba(11, 61, 145, 0.85)',
+        'azul_profundo_border' => 'rgba(11, 61, 145, 1)',
+        'azul_cristal' => 'rgba(63, 169, 245, 0.6)',
+        'azul_cristal_border' => 'rgba(63, 169, 245, 1)',
+        'amarelo_solar' => 'rgba(247, 201, 72, 0.6)',
+        'amarelo_solar_border' => 'rgba(247, 201, 72, 1)',
+    ],
 ];
