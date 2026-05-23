@@ -1,8 +1,8 @@
 # Runbook — Google Integrations (Phase F)
 
 > **Owner**: Anderson de Oliveira Venturini
-> **Last updated**: 2026-05-19
-> **Status**: Code substrate landed (commit history `feat(google): F15+F16 substrate`); the live OAuth grant + production wiring described below remain a manual step the system owner performs once.
+> **Last updated**: 2026-05-23
+> **Status**: Code substrate landed. The **Drive backup client is now wired** in `GoogleDriveUploader` (upload + folder bootstrap + retention rotation), guarded by `class_exists(\Google\Client::class)` so it stays inert — with a local-filesystem fallback — until the package is installed. Activation is now just two host steps: **(1)** `composer require google/apiclient google/apiclient-services`, **(2)** the one-time OAuth grant (Step 4). The Contacts (People API) seam in `GoogleContactsSync` is still a stub.
 
 This runbook walks the dedicated Google account through the one-time OAuth grant that unlocks F15 (Drive backup) and F16 (Contacts sync). After the grant, the scheduled commands run unattended.
 
@@ -67,9 +67,11 @@ The same Settings page exposes "Conectar Google Contacts" — same OAuth flow bu
 
 ## Step 5 — Drive folder bootstrap
 
-The first `fa:backup-database` run does:
+**Prerequisite:** `composer require google/apiclient google/apiclient-services` on the host (verify ARM64 wheels). Until this runs, `GoogleDriveUploader::callDrive()` takes the local-filesystem fallback and never touches Drive.
 
-1. Calls `drive.files.list` looking for the configured folder name.
+Once the package is present, this is automatic — implemented in `GoogleDriveUploader::ensureFolder()`. The first `fa:backup-database` run does:
+
+1. Calls `drive.files.list` looking for the configured folder name (`GOOGLE_DRIVE_FOLDER_NAME`).
 2. If absent, creates it via `drive.files.create` and persists the folder id in `delivery_settings.google_drive_folder_id`.
 
 ## Step 6 — Schedule the jobs
@@ -129,4 +131,4 @@ tests/Feature/Services/BackupCommandTest.php
 tests/Feature/Services/GoogleContactsSyncTest.php
 ```
 
-Override the `protected function callDrive(...)` / `callPeopleApi(...)` seams to swap in the real `google/apiclient` client when wiring production.
+`GoogleDriveUploader::callDrive()` / `callRotate()` are **already wired** to the real `google/apiclient` client (guarded + local fallback). `GoogleContactsSync::callPeopleApi()` / `pushToPeopleApi()` remain stubs — swap in the real People API client when wiring F16.

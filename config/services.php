@@ -35,4 +35,17 @@ return [
         ],
     ],
 
+    /*
+     * Google integrations (F15 Drive backup + F16 Contacts sync).
+     * Consumed by App\Services\GoogleDriveUploader / GoogleContactsSync.
+     * Values stay empty until the live OAuth grant — see docs/RUNBOOK_GOOGLE.md.
+     */
+    'google' => [
+        // Path to the OAuth 2.0 client credentials JSON downloaded from Google
+        // Cloud (RUNBOOK_GOOGLE step 2).
+        'oauth_client_json' => env('GOOGLE_OAUTH_CLIENT_JSON'),
+        'drive_folder_name' => env('GOOGLE_DRIVE_FOLDER_NAME', 'FA Distribuidora — Backups'),
+        'contacts_group' => env('GOOGLE_CONTACTS_GROUP', 'FA Distribuidora'),
+    ],
+
 ];
