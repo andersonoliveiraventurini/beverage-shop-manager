@@ -228,6 +228,68 @@ it('lets a manager override unit price but ignores it for an attendant', functio
     expect((float) $page->get('cart')[$v['soda']->id]['unit_price'])->toBe(11.00);
 });
 
+it('ignores a client-tampered unit price for an attendant on finalize', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+
+    $page = livewireTest(PointOfSale::class)->call('addVariant', $v['soda']->id);
+    // The cart is a public, client-writable property — simulate a tampered payload.
+    $cart = $page->get('cart');
+    $cart[$v['soda']->id]['unit_price'] = 0.01;
+    $page->set('cart', $cart)->call('finalize')->assertHasNoErrors();
+
+    $item = Sale::query()->latest('id')->first()->items->first();
+    expect((float) $item->unit_price)->toBe(13.00); // catalog price, not the tampered 0.01
+});
+
+it('persists a manager unit-price override on finalize', function () {
+    $this->actingAs(User::factory()->manager()->create());
+    $v = seedCatalog();
+
+    livewireTest(PointOfSale::class)
+        ->call('addVariant', $v['soda']->id)
+        ->call('setUnitPrice', $v['soda']->id, 11.00)
+        ->call('finalize')
+        ->assertHasNoErrors();
+
+    $item = Sale::query()->latest('id')->first()->items->first();
+    expect((float) $item->unit_price)->toBe(11.00);
+});
+
+/* ---- Follow-up: customer search (locks the phones query) + clearCustomer ---- */
+
+it('finds delivery customers by name and phone number', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $joao = Customer::factory()->create(['name' => 'João Silva']);
+    $joao->phones()->create(['number' => '19998887766']);
+    Customer::factory()->create(['name' => 'Maria Souza']);
+
+    $page = livewireTest(PointOfSale::class)->call('setType', 'delivery');
+
+    $page->set('customerSearch', 'João');
+    expect($page->instance()->customerResults->pluck('name'))
+        ->toContain('João Silva')->not->toContain('Maria Souza');
+
+    $page->set('customerSearch', '99888');
+    expect($page->instance()->customerResults->pluck('name'))->toContain('João Silva');
+});
+
+it('clears the selected customer, address and fees with clearCustomer (stays in delivery)', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $customer = Customer::factory()->create(['has_manual_fee_override' => true, 'delivery_fee' => 4.00]);
+    $customer->addresses()->create(['street' => 'Rua C', 'district' => 'JG', 'city' => 'Campinas', 'is_primary' => true]);
+
+    $page = livewireTest(PointOfSale::class)
+        ->call('setType', 'delivery')
+        ->call('selectCustomer', $customer->id)
+        ->call('clearCustomer');
+
+    expect($page->get('customer_id'))->toBeNull()
+        ->and($page->get('address_id'))->toBeNull()
+        ->and($page->get('type'))->toBe('delivery')
+        ->and((float) $page->get('delivery_fee'))->toBe(0.0);
+});
+
 /* ---- Task 8: view regions ---- */
 
 it('renders the cart region with a live total', function () {

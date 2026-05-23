@@ -329,6 +329,16 @@ class PointOfSale extends Page
         $this->address_id = $addressId;
     }
 
+    /** Deselect the current delivery customer to pick another (stays in delivery). */
+    public function clearCustomer(): void
+    {
+        $this->customer_id = null;
+        $this->address_id = null;
+        $this->customerSearch = '';
+        $this->delivery_fee = 0;
+        $this->building_fee = 0;
+    }
+
     public function setPaymentMethod(string $method): void
     {
         if (in_array($method, Sale::PAYMENT_METHODS, true)) {
@@ -355,7 +365,12 @@ class PointOfSale extends Page
     {
         $this->validateCart();
 
-        DB::transaction(function (): void {
+        // The cart is a public (client-writable) Livewire property, so unit_price
+        // cannot be trusted from the payload. Only managers may set a price; for
+        // everyone else we re-derive it from the catalog at finalize time.
+        $isManager = (bool) optional(auth()->user())->isManager();
+
+        DB::transaction(function () use ($isManager): void {
             $sale = Sale::create([
                 'customer_id' => $this->type === 'delivery' ? $this->customer_id : null,
                 'address_id' => $this->type === 'delivery' ? $this->address_id : null,
@@ -371,10 +386,14 @@ class PointOfSale extends Page
             ]);
 
             foreach ($this->cart as $entry) {
+                $unitPrice = $isManager
+                    ? (float) $entry['unit_price']
+                    : (float) (ProductVariant::whereKey($entry['variant_id'])->value('sale_price') ?? $entry['unit_price']);
+
                 $sale->items()->create([
                     'variant_id' => $entry['variant_id'],
                     'quantity' => (int) $entry['quantity'],
-                    'unit_price' => (float) $entry['unit_price'],
+                    'unit_price' => $unitPrice,
                     'modality' => $entry['modality'],
                     'returned_shell_expires_at' => $entry['returned_shell_expires_at'],
                     'delivered_shell_expires_at' => $entry['delivered_shell_expires_at'],

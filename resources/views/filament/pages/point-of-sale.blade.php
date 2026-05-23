@@ -40,7 +40,7 @@
                                     <p class="text-xs text-danger-600">Cliente sem endereço cadastrado.</p>
                                 @endif
                             </div>
-                            <button type="button" wire:click="setType('delivery')" wire:click.prevent="$set('customer_id', null)" class="shrink-0 text-xs text-gray-400 hover:text-danger-500">trocar</button>
+                            <button type="button" wire:click="clearCustomer" class="shrink-0 text-xs text-gray-400 hover:text-danger-500">trocar</button>
                         </div>
                     @else
                         <input type="text" wire:model.live.debounce.300ms="customerSearch"
