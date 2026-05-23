@@ -1,7 +1,9 @@
 # Next Steps — FA Distribuidora
 
-> **Snapshot date**: 2026-05-19
-> **State**: MVP F01–F16 ships in code (commits `f03bd7d` → `ca2b946`). 132/132 Pest tests green. F18 WhatsApp Inbox specced as Phase H (next increment after M7 go-live).
+> **Snapshot date**: 2026-05-23
+> **State**: MVP F01–F16 ships in code. **181 Pest tests green (1 skipped)** — including a panel-wide E2E sweep (`PanelE2ESweepTest`) added 2026-05-23 that mounts every route, submits every create form and renders every screen. F18 WhatsApp Inbox specced as Phase H.
+>
+> **Board of Advisors — DEC-001 (2026-05-23): _ship beats build._** The four councils converged: the highest-leverage action is putting the MVP into real production, not more code. Recommended near-term sequence: **(1)** wire the *off-host* Drive backup (the security gate — the Oracle Free Tier is a single point of failure and the rollback runbook depends on it) → **(2)** M7 cut-over → **(3)** ~30 days of real usage → **(4)** _only then_ reassess F18 vs hardening vs polish, driven by real data. **Defer F18, P1 polish and hardening until then.**
 
 This document is the operational roadmap. Tracks are listed **in the order you should attack them**. Each track is self-contained — owner, effort, dependencies and blockers up front so you can pick the top open track and run.
 
@@ -11,7 +13,7 @@ This document is the operational roadmap. Tracks are listed **in the order you s
 
 | # | Track | Status | Calendar | Unblocks |
 |---|---|---|---|---|
-| 1 | **Push pending doc commits** | 🟡 Open | 1 min | Nothing — pure paperwork |
+| 1 | **Push the `chore/e2e-sweep-and-nav-fixes` branch + open PR** | 🟡 Open | 2 min | Lands this session's E2E sweep + visual/brand-gate fixes |
 | 2 | **M7 — Production cut-over** | 🟡 Open | ~2 weeks (1 day code + 10 days parallel-usage) | The whole point of the project |
 | 3 | **M6 — Google integrations live (F15 + F16)** | 🟡 Open (substrate done) | ~½ day human + ~½ day code | Drive backup runs unattended; Contacts sync replaces manual entry |
 | 4 | **M8 — F18 WhatsApp Inbox (Phase H)** | ⛔ Spec done, code not started | ~2.5 weeks | Closes the biggest operational gap after cut-over |
@@ -20,7 +22,7 @@ This document is the operational roadmap. Tracks are listed **in the order you s
 | 7 | **Post-MVP P1 features** | ⛔ Not started | Each L/M | Only worth doing once production data exists |
 | 8 | **Doc maintenance** | 🟢 Continuous | 5 min per commit | The PRD, the plan and the runbooks stay in sync as we ship |
 
-The next thing to **do** is Track 1, then Track 2. Tracks 3 and 4 unblock each other only loosely — both can wait for the manager's availability.
+The next thing to **do** is Track 1 (push this session's branch). Then, per **Board decision DEC-001**, do the **off-host Drive backup half of Track 3 (M6)** as the security gate *before* Track 2 (M7 cut-over) — never aim real production data at a single Oracle host with no off-host backup. Track 4 (F18) and Tracks 5–6 (polish/hardening) wait until ~30 days of real usage produce signal.
 
 ---
 
