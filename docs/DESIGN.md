@@ -176,7 +176,7 @@ These are the only files allowed to declare brand values:
 | File | Owns |
 |---|---|
 | [`docs/DESIGN.md`](./DESIGN.md) (this file) | Tokens table, usage rules, prose |
-| [`config/brand.php`](../config/brand.php) | String literals (name, tagline, address, hours, phones) |
+| [`config/brand.php`](../config/brand.php) | String literals (name, tagline, address, hours, phones) **and** the `chart_colors` mirror — brand tokens expressed as `rgba()` strings for Chart.js, which cannot read CSS variables. Keep `chart_colors` in sync with [§2](#2-color-tokens) / `theme.css` when a token changes. |
 | [`resources/css/filament/admin/theme.css`](../resources/css/filament/admin/theme.css) | CSS custom properties, Tailwind theme extensions, `@source` directives |
 | [`app/Providers/Filament/AdminPanelProvider.php`](../app/Providers/Filament/AdminPanelProvider.php) | Filament `Color::hex(…)` bindings — must mirror the values declared in `theme.css` (synchronized by comment) |
 | [`public/images/fa-logo*.svg`](../public/images/) | Logo + mark SVGs |
@@ -210,3 +210,4 @@ For quick lookup when working from the PDF:
 | Version | Date | Author | Changes |
 |---------|------|--------|---------|
 | 1.0.0 | 2026-05-18 | Anderson de Oliveira Venturini | Initial design system distilled from `FA Distribuidora · Print.pdf` (v1, 2026-05-09). Token tables, source-of-truth map, component checklist |
+| 1.0.1 | 2026-05-23 | Anderson de Oliveira Venturini | Governance: declare `config/brand.php::chart_colors` (rgba mirror for Chart.js) as an authorized brand-value source in §9. Brand-compliance gate (`DesignSystemTest`) hardened to also catch `rgb()`/`rgba()` literals, closing the loophole that let a raw `rgba()` slip into `delivery-board.blade.php`. |

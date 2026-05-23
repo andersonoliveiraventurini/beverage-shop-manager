@@ -9,8 +9,9 @@ use Illuminate\Support\Facades\Blade;
  *
  * Two checks:
  * 1. config/brand.php exposes every key documented in docs/DESIGN.md §7.
- * 2. No hex color literal appears outside the allow-list — design tokens may
- *    only live in theme.css, AdminPanelProvider, SVG logos and the docs.
+ * 2. No hex OR rgb(a) color literal appears outside the allow-list — design
+ *    tokens may only live in theme.css, AdminPanelProvider, SVG logos, the
+ *    config/brand.php chart-color mirror and the docs.
  * 3. <x-fa.wave-divider /> renders and consumes one of the brand color tokens.
  *
  * If this test starts failing, do NOT silence it — either move the new value
@@ -31,7 +32,7 @@ it('exposes every brand string literal documented in DESIGN.md', function () {
         ->and($brand['phones']['whatsapp'])->toBe('(19) 98177-8284');
 });
 
-it('does not leak hex color literals outside the allow-listed source files', function () {
+it('does not leak hex or rgb(a) color literals outside the allow-listed source files', function () {
     $root = base_path();
 
     // Allow-listed files: the design-token source-of-truth + the brand SVGs +
@@ -44,6 +45,10 @@ it('does not leak hex color literals outside the allow-listed source files', fun
         'public/images/fa-logo.svg',
         'public/images/fa-logo-mark.svg',
         'public/favicon.svg',
+        // config/brand.php mirrors the brand tokens as rgba strings for
+        // Chart.js (which can't read CSS variables). Authorized as a brand-
+        // value source — see docs/DESIGN.md §9.
+        'config/brand.php',
         // The receipt is a standalone HTML page (no @import of theme.css) so
         // it must redeclare the brand tokens locally. Keep this template
         // synced with theme.css when tokens change — see docs/DESIGN.md §9.
@@ -82,8 +87,10 @@ it('does not leak hex color literals outside the allow-listed source files', fun
                 continue;
             }
 
-            // Match #RGB, #RRGGBB, #RRGGBBAA — three sizes used in CSS / SVG.
-            if (preg_match_all('/#[0-9A-Fa-f]{3}\b|#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{8}\b/', $contents, $m)) {
+            // Match #RGB, #RRGGBB, #RRGGBBAA hex literals plus rgb()/rgba()
+            // color functions — the loophole that let `rgba(11,61,145,…)`
+            // slip past the hex-only gate (delivery-board.blade.php).
+            if (preg_match_all('/#[0-9A-Fa-f]{3}\b|#[0-9A-Fa-f]{6}\b|#[0-9A-Fa-f]{8}\b|rgba?\([^)]*\)/', $contents, $m)) {
                 $offenders[$rel] = array_values(array_unique($m[0]));
             }
         }
@@ -91,7 +98,7 @@ it('does not leak hex color literals outside the allow-listed source files', fun
 
     expect($offenders)->toBe(
         [],
-        'Hex color literals must live in the allow-listed brand source files only. '
+        'Hex / rgb(a) color literals must live in the allow-listed brand source files only. '
         . 'Move the value into resources/css/filament/admin/theme.css as a CSS variable, '
         . 'or — for Filament panel colors — into AdminPanelProvider with a matching comment. '
         . "Offenders:\n" . json_encode($offenders, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
