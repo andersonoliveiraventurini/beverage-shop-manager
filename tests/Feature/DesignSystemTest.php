@@ -48,6 +48,11 @@ it('does not leak hex color literals outside the allow-listed source files', fun
         // it must redeclare the brand tokens locally. Keep this template
         // synced with theme.css when tokens change — see docs/DESIGN.md §9.
         'resources/views/sales/receipt.blade.php',
+        // The public homepage is also a standalone page served outside the
+        // Filament panel (it loads app.css, not theme.css), so it carries the
+        // brand palette locally in its <style> block. Same rule as the receipt:
+        // keep synced with theme.css / docs/DESIGN.md §2 when tokens change.
+        'resources/views/home.blade.php',
         // This very test references token values in strings — exempt itself.
         'tests/Feature/DesignSystemTest.php',
     ];

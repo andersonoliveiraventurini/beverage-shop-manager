@@ -1,14 +1,13 @@
 <?php
 
+use App\Http\Controllers\HomeController;
 use App\Models\Sale;
 use App\Models\Store;
 use Illuminate\Support\Facades\Route;
 
-// FA Distribuidora is an internal admin tool — there is no public landing
-// page in MVP scope. The root path forwards to the Filament panel so the
-// default Laravel welcome view does not leak the framework or violate the
-// design system (NFR-01).
-Route::redirect('/', '/admin');
+// Public storefront: the catalog (by category, with prices) plus depot contact
+// info and a WhatsApp order CTA. The Filament admin tool lives under /admin.
+Route::get('/', HomeController::class)->name('home');
 
 // Printable receipt for an existing sale — A5 by default, 80mm via ?format=thermal.
 // Behind auth so attendants / manager / deliverer can reprint; deliverer
