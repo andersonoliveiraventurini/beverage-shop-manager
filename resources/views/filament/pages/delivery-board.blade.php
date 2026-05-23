@@ -89,7 +89,7 @@
                 <ul class="space-y-2">
                     @foreach ($completed as $delivery)
                         <li class="rounded border p-3 flex justify-between"
-                            style="background: white; border-color: rgba(11, 61, 145, 0.2);">
+                            style="background: var(--fa-branco-mineral); border-color: color-mix(in srgb, var(--fa-azul-profundo) 20%, transparent);">
                             <span>
                                 #{{ $delivery->sale_id }} ·
                                 {{ optional($delivery->sale->customer)->name ?? '—' }}

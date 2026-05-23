@@ -27,7 +27,8 @@ class WaterShellLedgerResource extends Resource
 
     protected static string|\UnitEnum|null $navigationGroup = 'Operação';
 
-    protected static ?int $navigationSort = 3;
+    // Sort 4: 'Painel de entregas' (DeliveryBoard) owns sort 3 in this group.
+    protected static ?int $navigationSort = 4;
 
     public static function shouldRegisterNavigation(): bool
     {
