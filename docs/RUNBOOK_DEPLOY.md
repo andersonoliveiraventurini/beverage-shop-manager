@@ -1,7 +1,7 @@
 # Runbook — Deploy + Go-Live (Phase G)
 
 > **Owner**: Anderson de Oliveira Venturini
-> **Last updated**: 2026-05-19
+> **Last updated**: 2026-05-23
 > **Target host**: Oracle Cloud Always-Free Tier (Ampere A1, ARM64) at <https://fa.andersonventurini.cloud>
 > **Status**: Staging is live and acts as the testing environment. M7 go-live promotes the same machine to production.
 
@@ -16,7 +16,7 @@ This runbook covers everything between "the code is green on `main`" and "the ma
    ```bash
    docker run --rm -v "$PWD:/app" -w /app fa-test:php84 vendor/bin/pest --parallel
    ```
-   Expected: every test passes (current snapshot: 132 passed, 1 pre-existing skip, 395 assertions).
+   Expected: every test passes (current snapshot: **182 passed, 1 pre-existing skip, 469 assertions**). Note: the test image **must** include the `intl` extension (Filament `->money()` columns throw without it); a bare php-cli image will fail the Filament render tests.
 3. **Brand-compliance gate is green.** Same test run — `Tests\Feature\DesignSystemTest` lives there.
 4. **No hex literal violations.** If the gate flags a new file, either move the token into `theme.css` / `AdminPanelProvider` or annotate the file in the allow-list with a comment explaining why.
 5. **The PRD implementation-status table and `IMPLEMENTATION_PLAN.md` checklist reflect what's actually shipping.** Update before tagging.
@@ -65,7 +65,7 @@ git push origin --tags
 |-------|---------------|----------|
 | Health | `curl -I https://fa.andersonventurini.cloud/admin/login` | `HTTP/2 200` |
 | DB connectivity | `docker compose exec app php artisan tinker --execute='echo DB::connection()->getPdo() ? "ok" : "fail";'` | `ok` |
-| Schedule loop | `docker compose exec app php artisan schedule:list` | Shows `fa:backup-database` and the Contacts pull |
+| Schedule loop | `docker compose exec app php artisan schedule:list` | Shows `fa:backup-database` and the Contacts pull — **requires the schedule lines from [`RUNBOOK_GOOGLE.md`](RUNBOOK_GOOGLE.md) Step 6 to be added to `routes/console.php` first** (not yet wired in code; pair it with the OAuth grant so rotation is active and local dumps don't accumulate) |
 | First backup | `docker compose exec app php artisan fa:backup-database` | Exits 0, BackupRun row visible in Settings |
 | Brand assets | open the admin login | FA logo + Branco Mineral background + Inter font |
 
