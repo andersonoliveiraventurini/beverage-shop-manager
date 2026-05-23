@@ -240,3 +240,93 @@ it('renders the cart region with a live total', function () {
         ->assertSee('Finalizar venda')  // finalize button
         ->assertSee('13,00');           // line/total formatted in BRL
 });
+
+/* ---- Follow-up: delivery customer / address picker ---- */
+
+it('selects a customer for delivery, pre-filling fees and primary address', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $customer = Customer::factory()->create([
+        'delivery_fee' => 4.00, 'building_fee' => 1.50, 'has_manual_fee_override' => true,
+    ]);
+    $address = $customer->addresses()->create([
+        'street' => 'Rua A', 'district' => 'JG', 'city' => 'Campinas', 'is_primary' => true,
+    ]);
+
+    $page = livewireTest(PointOfSale::class)
+        ->call('setType', 'delivery')
+        ->call('selectCustomer', $customer->id);
+
+    expect($page->get('customer_id'))->toBe($customer->id)
+        ->and((float) $page->get('delivery_fee'))->toBe(4.00)
+        ->and((float) $page->get('building_fee'))->toBe(1.50)
+        ->and($page->get('address_id'))->toBe($address->id);
+});
+
+it('clears the customer, fees and address when switching back to counter', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $customer = Customer::factory()->create(['has_manual_fee_override' => true, 'delivery_fee' => 5.00]);
+    $customer->addresses()->create(['street' => 'Rua B', 'district' => 'JG', 'city' => 'Campinas', 'is_primary' => true]);
+
+    $page = livewireTest(PointOfSale::class)
+        ->call('setType', 'delivery')
+        ->call('selectCustomer', $customer->id)
+        ->call('setType', 'counter');
+
+    expect($page->get('customer_id'))->toBeNull()
+        ->and($page->get('address_id'))->toBeNull()
+        ->and((float) $page->get('delivery_fee'))->toBe(0.0);
+});
+
+/* ---- Follow-up: cash-change calculation ---- */
+
+it('computes cash change due only when paying cash', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+
+    $page = livewireTest(PointOfSale::class)
+        ->call('addVariant', $v['soda']->id)   // 13.00
+        ->set('payment_method', 'cash')
+        ->set('cashTendered', 20.00);
+    expect((float) $page->instance()->changeDue)->toBe(7.00);
+
+    $page->set('payment_method', 'pix');
+    expect((float) $page->instance()->changeDue)->toBe(0.0);
+});
+
+/* ---- Follow-up: Enter shortcut (addFirstMatch) ---- */
+
+it('adds the only catalog match via addFirstMatch and ignores ambiguous searches', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+
+    // exactly one match -> added
+    $single = livewireTest(PointOfSale::class)->set('search', 'coca')->call('addFirstMatch');
+    expect($single->get('cart'))->toHaveKey($v['soda']->id);
+
+    // multiple matches (no search) -> no-op
+    $multi = livewireTest(PointOfSale::class)->set('search', '')->call('addFirstMatch');
+    expect($multi->get('cart'))->toBeEmpty();
+});
+
+/* ---- Follow-up: finalize a delivery sale end-to-end ---- */
+
+it('finalizes a delivery sale with customer and address and creates a delivery', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+    $customer = Customer::factory()->create(['has_manual_fee_override' => true, 'delivery_fee' => 3.00]);
+    $address = $customer->addresses()->create(['street' => 'Rua X', 'district' => 'JG', 'city' => 'Campinas', 'is_primary' => true]);
+
+    livewireTest(PointOfSale::class)
+        ->call('setType', 'delivery')
+        ->call('selectCustomer', $customer->id)
+        ->call('addVariant', $v['soda']->id)
+        ->call('finalize')
+        ->assertHasNoErrors();
+
+    $sale = Sale::query()->latest('id')->first();
+    expect($sale->type)->toBe('delivery')
+        ->and($sale->customer_id)->toBe($customer->id)
+        ->and($sale->address_id)->toBe($address->id)
+        ->and((float) $sale->delivery_fee)->toBe(3.00)
+        ->and($sale->delivery)->not->toBeNull();
+});
