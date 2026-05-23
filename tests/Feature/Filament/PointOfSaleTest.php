@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Filament\Pages\PointOfSale;
 use App\Models\Category;
+use App\Models\Customer;
 use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\StockMovement;

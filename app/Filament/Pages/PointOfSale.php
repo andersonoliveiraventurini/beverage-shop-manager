@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use App\Models\Category;
+use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\ProductVariant;
 use App\Models\Sale;
 use App\Models\SaleItem;
@@ -68,6 +70,11 @@ class PointOfSale extends Page
     public float $discount = 0;
 
     public ?string $discount_reason = null;
+
+    // --- Delivery customer picker + finalize modal ---
+    public string $customerSearch = '';
+
+    public float $cashTendered = 0;
 
     public static function canAccess(): bool
     {
@@ -232,6 +239,114 @@ class PointOfSale extends Page
         return round(max(0, $this->subtotal + $fees - (float) $this->discount), 2);
     }
 
+    /** Cash change owed back to the customer (0 unless paying cash with enough tendered). */
+    #[Computed]
+    public function changeDue(): float
+    {
+        if ($this->payment_method !== Sale::PAYMENT_CASH) {
+            return 0.0;
+        }
+
+        return round(max(0, (float) $this->cashTendered - $this->total), 2);
+    }
+
+    /* -----------------------------------------------------------------------
+     | Delivery customer / address pickers
+     * -------------------------------------------------------------------- */
+
+    /** @return Collection<int, array{id:int,name:string}> */
+    #[Computed]
+    public function customerResults(): Collection
+    {
+        if ($this->type !== Sale::TYPE_DELIVERY || trim($this->customerSearch) === '') {
+            return collect();
+        }
+
+        $term = '%' . $this->customerSearch . '%';
+
+        return Customer::query()
+            ->where(fn ($q) => $q
+                ->where('name', 'like', $term)
+                ->orWhereHas('phones', fn ($p) => $p->where('number', 'like', $term)))
+            ->orderBy('name')
+            ->limit(15)
+            ->get(['id', 'name'])
+            ->map(fn (Customer $c) => ['id' => $c->id, 'name' => $c->name]);
+    }
+
+    #[Computed]
+    public function selectedCustomer(): ?Customer
+    {
+        return $this->customer_id ? Customer::find($this->customer_id) : null;
+    }
+
+    /** @return Collection<int, string> address_id => full address */
+    #[Computed]
+    public function addressOptions(): Collection
+    {
+        if (! $this->customer_id) {
+            return collect();
+        }
+
+        return CustomerAddress::query()
+            ->where('customer_id', $this->customer_id)
+            ->orderByDesc('is_primary')
+            ->get()
+            ->mapWithKeys(fn (CustomerAddress $a) => [$a->id => $a->full_address]);
+    }
+
+    public function setType(string $type): void
+    {
+        $this->type = $type === Sale::TYPE_DELIVERY ? Sale::TYPE_DELIVERY : Sale::TYPE_COUNTER;
+
+        if ($this->type === Sale::TYPE_COUNTER) {
+            $this->customer_id = null;
+            $this->address_id = null;
+            $this->delivery_fee = 0;
+            $this->building_fee = 0;
+            $this->customerSearch = '';
+        }
+    }
+
+    public function selectCustomer(int $customerId): void
+    {
+        $customer = Customer::with('primaryAddress')->find($customerId);
+        if (! $customer) {
+            return;
+        }
+
+        // Pre-fill delivery, fees and primary address from the customer — the
+        // same defaults SaleForm applies when a customer is chosen.
+        $this->customer_id = $customer->id;
+        $this->delivery_fee = (float) $customer->delivery_fee;
+        $this->building_fee = (float) $customer->building_fee;
+        $this->address_id = optional($customer->primaryAddress)->id;
+        $this->customerSearch = '';
+    }
+
+    public function setAddress(?int $addressId): void
+    {
+        $this->address_id = $addressId;
+    }
+
+    public function setPaymentMethod(string $method): void
+    {
+        if (in_array($method, Sale::PAYMENT_METHODS, true)) {
+            $this->payment_method = $method;
+        }
+    }
+
+    /** Keyboard shortcut helper: add the only catalog match when Enter is pressed in search. */
+    public function addFirstMatch(): void
+    {
+        $variants = $this->variants;
+
+        if ($variants->count() === 1) {
+            $this->addVariant((int) $variants->first()->id);
+            $this->search = '';
+        }
+    }
+
     /* -----------------------------------------------------------------------
      | Finalize
      * -------------------------------------------------------------------- */
@@ -267,7 +382,14 @@ class PointOfSale extends Page
             }
         });
 
-        $this->reset(['cart', 'discount', 'discount_reason']);
+        $this->reset([
+            'cart', 'discount', 'discount_reason', 'cashTendered',
+            'type', 'customer_id', 'address_id', 'customerSearch',
+            'delivery_fee', 'building_fee', 'payment_method',
+        ]);
+
+        // Lets the Alpine finalize modal close itself on success.
+        $this->dispatch('pos-finalized');
 
         Notification::make()->title('Venda registrada com sucesso')->success()->send();
     }
