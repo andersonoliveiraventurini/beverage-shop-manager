@@ -44,3 +44,11 @@
         radial-gradient(circle at 0% 0%, color-mix(in srgb, var(--fa-azul-profundo) 8%, transparent), transparent 40%),
         radial-gradient(circle at 100% 100%, color-mix(in srgb, var(--fa-amarelo-solar) 10%, transparent), transparent 40%);
 }
+
+/* PDV (Point of Sale) — tabular, monospaced numerals for register-style alignment. */
+.fa-pos-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: "tnum" 1;
+    font-family: ui-monospace, "SFMono-Regular", "JetBrains Mono", "Menlo", monospace;
+    letter-spacing: -0.01em;
+}
