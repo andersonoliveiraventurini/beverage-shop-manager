@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Pages;
 
 use Carbon\CarbonImmutable;
+use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Pages\Dashboard as BaseDashboard;
 use Filament\Pages\Dashboard\Concerns\HasFiltersForm;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 
 /**
  * Custom dashboard page for FA Distribuidora.
@@ -26,6 +28,27 @@ use Filament\Schemas\Schema;
 class Dashboard extends BaseDashboard
 {
     use HasFiltersForm;
+
+    /**
+     * "Exportar PDF" button — opens the dashboard KPI report in a new tab,
+     * forwarding the currently selected date-range filters as query params.
+     *
+     * @return array<Action>
+     */
+    protected function getHeaderActions(): array
+    {
+        return [
+            Action::make('exportPdf')
+                ->label('Exportar PDF')
+                ->icon(Heroicon::OutlinedArrowDownTray)
+                ->color('gray')
+                ->url(fn (): string => route('dashboard.report.pdf', [
+                    'startDate' => $this->filters['startDate'] ?? CarbonImmutable::now()->startOfMonth()->toDateString(),
+                    'endDate' => $this->filters['endDate'] ?? CarbonImmutable::now()->endOfMonth()->toDateString(),
+                ]))
+                ->openUrlInNewTab(),
+        ];
+    }
 
     public function filtersForm(Schema $schema): Schema
     {
