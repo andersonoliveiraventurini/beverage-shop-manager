@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages;
 
+use App\Filament\Exports\SaleExporter;
+use App\Filament\Resources\Sales\SaleResource;
 use App\Models\Sale;
 use BackedEnum;
+use Filament\Actions\Action;
+use Filament\Actions\ExportAction;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\IconColumn;
@@ -42,6 +46,9 @@ class WaterSales extends Page implements HasTable
         return $table
             ->query(Sale::query()->where('contains_water', true)->with('customer'))
             ->defaultSort('created_at', 'desc')
+            ->headerActions([
+                ExportAction::make()->exporter(SaleExporter::class),
+            ])
             ->columns([
                 TextColumn::make('created_at')->label('Data')->dateTime('d/m/Y H:i')->sortable(),
                 TextColumn::make('id')->label('Venda')->prefix('#')->sortable(),
@@ -75,10 +82,10 @@ class WaterSales extends Page implements HasTable
                     ->query(fn ($q) => $q->whereDate('created_at', today())),
             ])
             ->recordActions([
-                \Filament\Actions\Action::make('open')
+                Action::make('open')
                     ->label('Abrir')
                     ->icon('heroicon-o-arrow-top-right-on-square')
-                    ->url(fn ($record) => \App\Filament\Resources\Sales\SaleResource::getUrl('edit', ['record' => $record])),
+                    ->url(fn ($record) => SaleResource::getUrl('edit', ['record' => $record])),
             ]);
     }
 }
