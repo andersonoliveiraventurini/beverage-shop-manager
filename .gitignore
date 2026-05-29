@@ -5,7 +5,12 @@
 .env.production
 .phpactor.json
 .phpunit.result.cache
+# AI / agent tooling (local, per-developer — not project artifacts)
+/.agents
+/.ai
 /.board
+/.claude
+/.codex
 /.fleet
 /.idea
 /.nova
