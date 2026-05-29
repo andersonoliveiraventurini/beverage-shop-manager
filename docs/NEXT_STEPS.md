@@ -1,7 +1,7 @@
 # Next Steps — FA Distribuidora
 
 > **Snapshot date**: 2026-05-29
-> **State**: MVP F01–F16 ships in code, **plus two integrated post-MVP surfaces — F19 PDV counter page (`/admin/pos`) and F20 public storefront (`/`)**. **207 Pest tests green (1 skipped, 559 assertions)** — including a panel-wide E2E sweep (`PanelE2ESweepTest`), `PointOfSaleTest` and `HomePageTest`. F18 WhatsApp Inbox specced as Phase H. The `feat/pos-counter-sales` and `feat/public-homepage` branches were consolidated into `main` on 2026-05-29 (PDV fast-forwarded, storefront merged clean); the Board DEC-001 security gate (off-host Drive backup wiring) is now on `main`.
+> **State**: MVP F01–F16 ships in code, **plus two integrated post-MVP surfaces — F19 PDV counter page (`/admin/pos`) and F20 public storefront (`/`) — and the Polish P1 front (Track 5, items 5.1–5.9)**. **254 Pest tests green (1 skipped, 725 assertions)** — including a panel-wide E2E sweep (`PanelE2ESweepTest`), `PointOfSaleTest` and `HomePageTest`. F18 WhatsApp Inbox specced as Phase H. The `feat/pos-counter-sales` and `feat/public-homepage` branches were consolidated into `main` on 2026-05-29; the Polish P1 work lives on `feat/polish-p1`. The Board DEC-001 security gate (off-host Drive backup wiring) is now on `main`.
 >
 > **Board of Advisors — DEC-001 (2026-05-23): _ship beats build._** The four councils converged: the highest-leverage action is putting the MVP into real production, not more code. Recommended near-term sequence: **(1)** wire the *off-host* Drive backup (the security gate — the Oracle Free Tier is a single point of failure and the rollback runbook depends on it) → **(2)** M7 cut-over → **(3)** ~30 days of real usage → **(4)** _only then_ reassess F18 vs hardening vs polish, driven by real data. **Defer F18, P1 polish and hardening until then.**
 
@@ -17,7 +17,7 @@ This document is the operational roadmap. Tracks are listed **in the order you s
 | 2 | **M7 — Production cut-over** | 🟡 Open | ~2 weeks (1 day code + 10 days parallel-usage) | The whole point of the project |
 | 3 | **M6 — Google integrations live (F15 + F16)** | 🟡 Open (substrate done) | ~½ day human + ~½ day code | Drive backup runs unattended; Contacts sync replaces manual entry |
 | 4 | **M8 — F18 WhatsApp Inbox (Phase H)** | ⛔ Spec done, code not started | ~2.5 weeks | Closes the biggest operational gap after cut-over |
-| 5 | **P1 polish (~10 small items)** | 🟡 Open | Each S/M, parallelizable | Polishes the panels and dashboard; safe to slot between deploys |
+| 5 | **P1 polish** | ✅ Shipped (9/10 on `feat/polish-p1`) | — | Items 5.1–5.9 done; 5.10 (Google import preview) deferred to the F16 OAuth grant |
 | 6 | **Hardening for first-month traffic** | 🟡 Open | ~1 week, scattered | Defensive — addresses the foot-guns once the manager and attendants are typing |
 | 7 | **Post-MVP P1 features** | ⛔ Not started | Each L/M | Only worth doing once production data exists |
 | 8 | **Doc maintenance** | 🟢 Continuous | 5 min per commit | The PRD, the plan and the runbooks stay in sync as we ship |
@@ -107,22 +107,22 @@ Scope decisions locked 2026-05-19 (see PRD §F18 and IMPLEMENTATION_PLAN §"Phas
 
 ## Track 5 — P1 polish (close out the ⚠️ items in PRD §4)
 
-Pick these in priority order. None blocks go-live; each one is small (S = ≤ 1 day) or medium (M = 2–3 days).
+✅ **Shipped 2026-05-29 on `feat/polish-p1`** (spec + plan in [`docs/superpowers/`](superpowers/); design = single front; +47 tests, suite 207 → 254). Items 5.1–5.9 done; **5.10 deferred** to the F16 OAuth grant.
 
-| # | Feature | What's pending | Effort | Why it's worth doing |
-|---|---|---|---|---|
-| 5.1 | **F10** | Add an explicit "Override manual" Toggle on the Customer form (today the column is set programmatically) | S | Manager-facing UX — the column exists but isn't manageable from the UI yet |
-| 5.2 | **F10** | Customer Infolist surface with distance, fees, source (auto/manual), `fees_calculated_at` | S | Manager wants to see "why is this customer's fee X?" at a glance |
-| 5.3 | **F11** | DeliveryBoard explicit filter chips for district / status (deliverer scope is automatic) | S | Easier triage on busy days |
-| 5.4 | **F12** | Wire Filament v5 native **CSV/XLSX export** on `WaterSales` + `GeneralSales` page headers | S | One-line each via Filament's `Tables\Actions\ExportAction` |
-| 5.5 | **F13** | Page-level **date range filter** that fans out to every dashboard widget | M | Today the dashboard always shows the current month — manager will want quarterly views |
-| 5.6 | **F13** | Add **Top customers** widget + **Monthly evolution** line chart | M | Both already specced; need their own widget classes following the Phase E pattern |
-| 5.7 | **F13** | Dashboard **PDF export** (DomPDF route) | M | Manager-facing report generation |
-| 5.8 | **F08** | Per-product + per-period filters on `SalesRelationManager`; total-spent-in-period column | S | Filament Select filter on `variant_id` + a `Tables\Columns\Summarizers\Sum` |
-| 5.9 | **F09** | Explicit per-row authorization (`delivery_fee` / `building_fee` override) with `audit_logs` entry | S | Already half-paved (`unit_price` + `out_of_area_override` already gated and audited) |
-| 5.10 | **F16** | "Initial import preview" — count Google contacts before applying on first connect | M | Polish for the OAuth-grant flow |
+| # | Feature | Status | Delivered as |
+|---|---|---|---|
+| 5.1 | **F10** | ✅ Already shipped | `has_manual_fee_override` Toggle in `CustomerForm` (regression test added) |
+| 5.2 | **F10** | ✅ Done | `ViewCustomer` page + `CustomerInfolist` (distance, fees, source, `fees_calculated_at`) |
+| 5.3 | **F11** | ✅ Done | District + status filters on `DeliveryBoard` |
+| 5.4 | **F12** | ✅ Done | `ExportAction` + `SaleExporter` on `WaterSales` + `GeneralSales` (openspout, no new dep) |
+| 5.5 | **F13** | ✅ Done | Custom `Dashboard` page (`HasFiltersForm`) → widgets read range via `InteractsWithPageFilters` |
+| 5.6 | **F13** | ✅ Done | `TopCustomersTable` + `MonthlyEvolutionChart` widgets |
+| 5.7 | **F13** | ✅ Done | Dashboard PDF export (`barryvdh/laravel-dompdf`, manager-gated route, brand Blade) |
+| 5.8 | **F08** | ✅ Done | Period + `variant_id` filters + period-total `Sum` on `SalesRelationManager` |
+| 5.9 | **F09** | ✅ Done | Manager-gated `delivery_fee`/`building_fee` + `audit_logs` via `Sale::updating` |
+| 5.10 | **F16** | ⛔ Deferred | "Initial import preview" — needs the F16 OAuth grant (Track 3 / M6) to verify end-to-end |
 
-**Blockers**: none. Slot these between bigger tracks.
+**Blockers**: none — only 5.10 remains, gated on the Google OAuth grant.
 
 ---
 

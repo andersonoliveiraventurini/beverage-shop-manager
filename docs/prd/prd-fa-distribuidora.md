@@ -50,7 +50,7 @@ Snapshot of the codebase against the MVP feature list (last audited **2026-05-19
 | F05 | Cargo / Stock-In | ✅ Done | Cargo + CargoItem with cascade IN stock movements; immutable cargos; weighted-average cost accessor on ProductVariant |
 | F06 | Stock and Expiry Control | ✅ Done | Real-time stock + min_stock + movement audit log + shell **and** product near-expiry widgets + configurable threshold + manual write-off as a stock-movement reason |
 | F07 | Customer Registry with Per-Customer Fees | ✅ Done | Multiple phones / addresses + auto-fee on primary-address save + phone search |
-| F08 | Customer Purchase History | 🟡 Partial (~80%) | Reverse-chronological with filters + per-product filter remains; per-period KPI + recurring detection ship as P1 |
+| F08 | Customer Purchase History | ✅ Done | Reverse-chronological with payment/status/water + **period + per-product filters** and a **period-total** summary (P1 item 5.8). Recurring-product detection stays P2 (needs real data) |
 | F09 | Sale Registration | ✅ Done | Repeater, modality, payment method, card fee, **out-of-area gated by in_delivery_area + audit log**, **manager-only unit_price**, **printable receipt** (A5 + 80mm) with brand wave + Disk Entregas |
 | F10 | Customer Fee Assignment | ✅ Done | `CustomerFeeCalculator` service + Nominatim geocoder (mock-friendly) + auto-recompute on primary-address save + bulk recompute respects manual override |
 | F11 | Daily Delivery Dispatch Board | ✅ Done | `Delivery` model + `DeliveryBoard` page with wire:poll, start route / mark delivered / cancel-with-reason; deliverer scope filter |
@@ -65,7 +65,7 @@ Snapshot of the codebase against the MVP feature list (last audited **2026-05-19
 
 **Cross-cutting**: role-based access (`manager` / `attendant` / `deliverer`) enforced through six Filament policies + a locked access-matrix test; **NFR-01 brand compliance gate** automated; password reset routes wired (production Gmail SMTP credentials land with the F15/F16 OAuth grant).
 
-**Quantitative summary**: every MVP feature is **shipped** in code, plus two integrated post-MVP surfaces (F19 PDV + F20 storefront). Two integrations (F15, F16) wait on a one-time human-driven OAuth grant; one runbook (training + cut-over) waits on on-site availability. Tests: **207 passed, 1 pre-existing skip, 559 assertions** (includes the panel-wide `PanelE2ESweepTest`, `PointOfSaleTest` and `HomePageTest`).
+**Quantitative summary**: every MVP feature is **shipped** in code, plus two integrated post-MVP surfaces (F19 PDV + F20 storefront) and the **Polish P1 front** (items 5.1–5.9 closing the open `⚠️` criteria on F08/F09/F10/F11/F12/F13). Two integrations (F15, F16) wait on a one-time human-driven OAuth grant; one runbook (training + cut-over) waits on on-site availability. Tests: **254 passed, 1 pre-existing skip, 725 assertions**.
 
 ### Deviations from PRD
 
@@ -310,8 +310,8 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 
 **Acceptance criteria**:
 - [x] Reverse-chronological listing — `SalesRelationManager` on `CustomerResource` defaults to `created_at desc`
-- [⚠️] Filters by period, product, status — payment / status / `contains_water` filters live; per-period date filter + per-product filter remain a small P1 polish (Filament native `Filter::query` + Select on `variant_id`)
-- [⚠️] Total spent in the selected period — relation manager column count + sum is one line away; P1 polish
+- [x] Filters by period, product, status — payment / status / `contains_water` filters plus a **period (date-range) filter** and a **per-product (`variant_id`) filter** on `SalesRelationManager` (P1 item 5.8, shipped 2026-05-29)
+- [x] Total spent in the selected period — `Summarizers\Sum` on the `total` column ("Total no período") reflecting the active filters (P1 item 5.8)
 - [ ] Recurring-product detection — explicit P2; ships after F08 has real customer data
 
 ---
@@ -329,7 +329,7 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 - [x] Payment method is mandatory — required select; one of `cash / pix / debit / credit`
 - [x] When payment method is card: optional "Card fee" (R$) field that adds to the total — visible only when payment is `debit` or `credit`
 - [x] **Attendant may edit the out-of-area extra fee at sale time ONLY for out-of-area customers** — `SaleForm::customerIsOutOfArea()` controls visibility + `->disabled()`; `Sale::updating` records every change to `out_of_area_override` in `audit_logs`
-- [⚠️] Manual adjustment of `delivery_fee` / `building_fee` outside that exception requires manager authorization and creates an audit log entry — `unit_price` is already gated; explicit `delivery_fee` / `building_fee` per-row authorization remains a P1 polish
+- [x] Manual adjustment of `delivery_fee` / `building_fee` outside that exception requires manager authorization and creates an audit log entry — both fields are now `->disabled()` for non-managers in `SaleForm` (mirroring `unit_price`) and every change is written to `audit_logs` via `Sale::updating` (P1 item 5.9, shipped 2026-05-29)
 - [x] Manual discount with required reason — `discount` + `discount_reason` (required when discount > 0)
 - [x] Printable receipt showing subtotal, delivery fee, building extra, card fee, discount, total — `routes/web.php::sales.receipt` + `resources/views/sales/receipt.blade.php` (A5 default, `?format=thermal` for 80mm). Brand wave dividers + Disk Entregas footer
 - [x] Snapshot keeps the historical totals intact even if the customer is edited later — `sales` migration stores frozen `subtotal`, `delivery_fee`, `building_fee`, `out_of_area_override`, `card_fee`, `discount`, `total`
@@ -346,8 +346,8 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 - [x] Automatic compute on customer create/edit — `CustomerAddress::booted::saved` calls `Customer::recomputeFees()` for the primary address; `Customer::recomputeFees` wraps `CustomerFeeCalculator::applyTo`
 - [x] Inside radius → `delivery_fee` = default; outside radius → `delivery_fee` = default + out-of-area extra — `CustomerFeeCalculator::compute()` Haversine vs `delivery_settings.radius_km`
 - [x] Building customer → add building extra — same calculator adds `default_building_fee` when `address.is_building = true`
-- [⚠️] Manual override sets `has_manual_fee_override = true` — column + behavior live; the **customer form still needs a Toggle field** for the manager to switch it explicitly (today the column is set via API/seed). Polish item — keep as ⚠️ until the toggle ships
-- [⚠️] Customer detail screen shows distance, fees, source (auto/manual), last computation date — all columns persisted; **a dedicated Infolist surface is a P1 polish**
+- [x] Manual override sets `has_manual_fee_override = true` — a manager-facing Toggle ("Taxas manuais (sem recálculo)") in `CustomerForm` sets it; bulk recompute respects it (P1 item 5.1, covered by a regression test 2026-05-29)
+- [x] Customer detail screen shows distance, fees, source (auto/manual), last computation date — `ViewCustomer` page + `CustomerInfolist` surface distance, delivery/building fee, fee source (Manual vs Automática) and `fees_calculated_at` (P1 item 5.2, shipped 2026-05-29)
 - [x] The sale never recomputes (except the F09 out-of-area exception) — confirmed: `Sale::saving` recomputes `total` from snapshot fields, never re-reads customer
 
 ---
@@ -359,7 +359,7 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a deliverer, I want to see the day's list on my phone and mark a delivery as done with one tap.
 
 **Acceptance criteria**:
-- [⚠️] Filters by district, deliverer, status — deliverer scope (each deliverer sees only own + unassigned) is automatic; explicit district/status **filter chips** are a P1 polish on `DeliveryBoard`
+- [x] Filters by district, deliverer, status — explicit **district** and **status** filters on `DeliveryBoard` (stacking with the automatic deliverer scope) (P1 item 5.3, shipped 2026-05-29)
 - [x] Statuses "en route" and "completed" with timestamp — `deliveries.status` enum + `started_at` / `completed_at` columns; `Delivery::startRoute()` / `markCompleted()`
 - [x] Marking as completed records returned shells when applicable — completion preserves the parent sale snapshot; returned-shell deltas are already in `water_shell_ledgers` via the sale's exchange modality
 - [x] Cancellation with reason + stock reversal — `Delivery::cancel($reason)` flips the parent `Sale` to `cancelled`, triggering `Sale::reverseStock()`
@@ -378,7 +378,7 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 - [x] "General Sales today" with totals, sale count, average ticket, top categories — symmetric `GeneralSales` page with the same filter; `TopProductsTable` widget on the dashboard handles top categories/products
 - [x] Admin views with filters: date range, customer, attendant, status, gallon size — payment / status / today filters live; date-range + per-customer remain a P1 polish via Filament's built-in range filters
 - [x] Mixed sales carry a badge in both lists — `WaterSales.mixed` IconColumn lights up for sales containing non-water items
-- [⚠️] Export to CSV/XLSX per listing — Filament v5 native CSV/XLSX export action is **wired-in-spec but not yet enabled** in the page header — P1 polish (one line per page)
+- [x] Export to CSV/XLSX per listing — Filament `ExportAction` + `SaleExporter` (openspout) on both `WaterSales` and `GeneralSales` headers; the scoped query carries into the export (P1 item 5.4, shipped 2026-05-29)
 - [x] Reprint receipt from any historical sale — `EditSale` exposes "Imprimir recibo" (A5) and "Recibo 80mm" actions to every recorded sale
 
 ---
@@ -390,13 +390,13 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Story**: As a manager, I want to open a single panel and know in 30 seconds how the week / month is going.
 
 **Acceptance criteria**:
-- [⚠️] Filters: date range, customer, product, attendant, type, category, payment method — current widgets always show the current month; a page-level date-range filter that fans out to every widget is the natural P1 polish
-- [⚠️] Charts: sales/day, water vs. rest, top products, top customers, monthly evolution — water-vs-rest (`WaterVsRestChart`) and top products (`TopProductsTable`) ship; monthly evolution + top customers stay P1
+- [x] Filters: date range — a custom `Dashboard` page (`HasFiltersForm`) holds a date-range filter that fans out to every analytics widget via `InteractsWithPageFilters` (default = current month) (P1 item 5.5, shipped 2026-05-29). Customer/product/attendant facets remain optional future polish
+- [x] Charts: sales/day, water vs. rest, top products, top customers, monthly evolution — `WaterVsRestChart` + `TopProductsTable` joined by `TopCustomersTable` and `MonthlyEvolutionChart` (line) (P1 item 5.6, shipped 2026-05-29)
 - [x] KPIs: total revenue, average ticket, water-share-of-revenue % — `SalesKpis` widget renders the four headline cards
 - [x] Payment-method breakdown (count and total in Cash, PIX, Debit, Credit) — `PaymentMethodBreakdown` widget
 - [x] Accumulated card fees in the period — fourth card on `SalesKpis`
 - [x] Manager-only access — every dashboard widget's `canView()` requires `isManager()`
-- [⚠️] Export PDF/XLSX — F12's CSV/XLSX export ships first; dashboard PDF stays P1
+- [x] Export PDF/XLSX — dashboard KPI summary PDF via `barryvdh/laravel-dompdf` (manager-gated `dashboard.report.pdf` route, brand-compliant Blade) honoring the active date range; per-listing CSV/XLSX ships in F12 (P1 item 5.7, shipped 2026-05-29)
 
 ---
 
@@ -1224,3 +1224,4 @@ gantt
 | 1.7.0 | 2026-05-19 | Anderson de Oliveira Venturini | **New scope: F18 — WhatsApp Conversational Inbox via Evolution API.** Specced as the next MVP+ increment (Phase H, milestone M8 — target 2026-09-15). Scope discipline decisions captured: self-hosted Evolution on the FA host, matched by normalized phone, operator-initiated only (no auto-reply / no scheduled broadcasts) to keep ban risk low on the existing FA number; text-only in MVP. Header action "Iniciar venda" opens CreateSale pre-filled. Implementation Status table grew a F18 row; Milestones grew M8. Companion plan landed as Phase H in [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) and as Track 7 in [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) |
 | 1.7.1 | 2026-05-19 | Anderson de Oliveira Venturini | **Doc-coherence pass.** [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) reorganized in real execution order (Push → M7 cut-over → M6 Google live → M8 WhatsApp → polish → hardening → post-MVP → doc maintenance) with a Priority Map block at the top showing status / calendar / unblocks per track. README header gained an F18 mention and the doc-map row was updated. No code change |
 | 1.8.0 | 2026-05-29 | Anderson de Oliveira Venturini | **Branch consolidation + new post-MVP scope.** Integrated two divergent feature branches into `main`: `feat/pos-counter-sales` (PDV counter page + real Google Drive client wiring + panel-wide E2E sweep + brand-gate hardening) fast-forwarded, then `feat/public-homepage` (public storefront) merged clean. Documented the two surfaces: **F19 — Point-of-Sale (PDV) Counter Page** (`/admin/pos`) and **F20 — Public Storefront / Landing Page** (`/`), the latter with a scope decision sanctioning it as a read-only marketing page that does **not** reopen the customer-portal out-of-scope item. Test count updated **132 → 207 passed (559 assertions)**. Drive-backup wiring (the Board DEC-001 security gate) is now on `main`, not stranded on a branch |
+| 1.8.1 | 2026-05-29 | Anderson de Oliveira Venturini | **Polish P1 front shipped** (`feat/polish-p1`; spec + plan under [`docs/superpowers/`](../superpowers/)). Closed the open `⚠️` acceptance criteria across F08/F09/F10/F11/F12/F13: customer view Infolist with fee source (F10 5.2), delivery-board district/status filters (F11 5.3), CSV/XLSX export on water/general listings (F12 5.4), dashboard date-range filter fanned out to widgets (F13 5.5), top-customers + monthly-evolution widgets (F13 5.6), dashboard PDF export via DomPDF (F13 5.7), purchase-history period/product filters + period total (F08 5.8), manager-gated `delivery_fee`/`building_fee` override with audit log (F09 5.9); item 5.1 (manual-override toggle) verified already-shipped. **5.10 (Google import preview) deferred** to the F16 OAuth grant. New dependency `barryvdh/laravel-dompdf`. Tests **207 → 254 passed (725 assertions)** |
