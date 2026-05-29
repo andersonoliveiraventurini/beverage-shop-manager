@@ -4,16 +4,20 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\ResolvesDashboardPeriod;
 use App\Models\ProductVariant;
-use App\Models\SaleItem;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\TableWidget;
 use Illuminate\Database\Eloquent\Builder;
 
 class TopProductsTable extends TableWidget
 {
-    protected static ?string $heading = 'Top 10 produtos do mês';
+    use InteractsWithPageFilters;
+    use ResolvesDashboardPeriod;
+
+    protected static ?string $heading = 'Top 10 produtos do período';
 
     public static function canView(): bool
     {
@@ -44,9 +48,11 @@ class TopProductsTable extends TableWidget
 
     private function buildQuery(): Builder
     {
-        // Top products of the current month, ranked by units sold across all
-        // confirmed sales. We aggregate sale_items + join through variants/
-        // products so the table can show readable names.
+        [$start, $end] = $this->resolvePeriod();
+
+        $startStr = $start->toDateString();
+        $endStr = $end->toDateString();
+
         return ProductVariant::query()
             ->select([
                 'product_variants.id',
@@ -54,22 +60,22 @@ class TopProductsTable extends TableWidget
                 'product_variants.size',
                 'products.name as product_name',
             ])
-            ->selectSub(function ($q) {
+            ->selectSub(function ($q) use ($startStr, $endStr) {
                 $q->from('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                     ->whereColumn('sale_items.variant_id', 'product_variants.id')
                     ->where('sales.status', 'confirmed')
-                    ->whereMonth('sales.created_at', now()->month)
-                    ->whereYear('sales.created_at', now()->year)
+                    ->whereDate('sales.created_at', '>=', $startStr)
+                    ->whereDate('sales.created_at', '<=', $endStr)
                     ->selectRaw('COALESCE(SUM(sale_items.quantity), 0)');
             }, 'units_sold')
-            ->selectSub(function ($q) {
+            ->selectSub(function ($q) use ($startStr, $endStr) {
                 $q->from('sale_items')
                     ->join('sales', 'sales.id', '=', 'sale_items.sale_id')
                     ->whereColumn('sale_items.variant_id', 'product_variants.id')
                     ->where('sales.status', 'confirmed')
-                    ->whereMonth('sales.created_at', now()->month)
-                    ->whereYear('sales.created_at', now()->year)
+                    ->whereDate('sales.created_at', '>=', $startStr)
+                    ->whereDate('sales.created_at', '<=', $endStr)
                     ->selectRaw('COALESCE(SUM(sale_items.line_total), 0)');
             }, 'revenue')
             ->join('products', 'products.id', '=', 'product_variants.product_id')

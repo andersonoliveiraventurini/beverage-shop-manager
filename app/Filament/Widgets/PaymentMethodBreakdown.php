@@ -4,13 +4,18 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\ResolvesDashboardPeriod;
 use App\Models\Sale;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class PaymentMethodBreakdown extends StatsOverviewWidget
 {
-    protected ?string $heading = 'Por forma de pagamento (mês atual)';
+    use InteractsWithPageFilters;
+    use ResolvesDashboardPeriod;
+
+    protected ?string $heading = 'Por forma de pagamento';
 
     public static function canView(): bool
     {
@@ -19,10 +24,12 @@ class PaymentMethodBreakdown extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        [$start, $end] = $this->resolvePeriod();
+
         $rows = Sale::query()
             ->where('status', Sale::STATUS_CONFIRMED)
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year)
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end)
             ->selectRaw('payment_method, COUNT(*) AS qty, SUM(total) AS revenue')
             ->groupBy('payment_method')
             ->get()
@@ -32,9 +39,9 @@ class PaymentMethodBreakdown extends StatsOverviewWidget
 
         $format = fn (string $label, string $key, string $color) => Stat::make(
             $label,
-            'R$ ' . number_format((float) $row($key)->revenue, 2, ',', '.'),
+            'R$ '.number_format((float) $row($key)->revenue, 2, ',', '.'),
         )
-            ->description((int) $row($key)->qty . ' vendas')
+            ->description((int) $row($key)->qty.' vendas')
             ->color($color);
 
         return [

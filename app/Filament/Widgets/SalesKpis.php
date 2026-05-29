@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Widgets\Concerns\ResolvesDashboardPeriod;
 use App\Models\Sale;
 use Filament\Support\Icons\Heroicon;
+use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Database\Eloquent\Builder;
@@ -16,7 +18,10 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class SalesKpis extends StatsOverviewWidget
 {
-    protected ?string $heading = 'Resumo do mês';
+    use InteractsWithPageFilters;
+    use ResolvesDashboardPeriod;
+
+    protected ?string $heading = 'Resumo do período';
 
     public static function canView(): bool
     {
@@ -25,10 +30,12 @@ class SalesKpis extends StatsOverviewWidget
 
     protected function getStats(): array
     {
+        [$start, $end] = $this->resolvePeriod();
+
         $confirmed = fn (): Builder => Sale::query()
             ->where('status', Sale::STATUS_CONFIRMED)
-            ->whereMonth('created_at', now()->month)
-            ->whereYear('created_at', now()->year);
+            ->whereDate('created_at', '>=', $start)
+            ->whereDate('created_at', '<=', $end);
 
         $revenue = (float) $confirmed()->sum('total');
         $count = (int) $confirmed()->count();
@@ -38,21 +45,21 @@ class SalesKpis extends StatsOverviewWidget
         $cardFees = (float) $confirmed()->sum('card_fee');
 
         return [
-            Stat::make('Receita do mês', 'R$ ' . number_format($revenue, 2, ',', '.'))
+            Stat::make('Receita do período', 'R$ '.number_format($revenue, 2, ',', '.'))
                 ->description("{$count} vendas confirmadas")
                 ->descriptionIcon(Heroicon::OutlinedCurrencyDollar)
                 ->color('primary'),
 
-            Stat::make('Ticket médio', 'R$ ' . number_format($avgTicket, 2, ',', '.'))
+            Stat::make('Ticket médio', 'R$ '.number_format($avgTicket, 2, ',', '.'))
                 ->description('Receita ÷ vendas')
                 ->color('info'),
 
-            Stat::make("Água: {$waterShare}%", 'R$ ' . number_format($waterRevenue, 2, ',', '.'))
+            Stat::make("Água: {$waterShare}%", 'R$ '.number_format($waterRevenue, 2, ',', '.'))
                 ->description('Share da receita')
                 ->color('warning'),
 
-            Stat::make('Taxas de cartão', 'R$ ' . number_format($cardFees, 2, ',', '.'))
-                ->description('Acumulado no mês')
+            Stat::make('Taxas de cartão', 'R$ '.number_format($cardFees, 2, ',', '.'))
+                ->description('Acumulado no período')
                 ->color('gray'),
         ];
     }
