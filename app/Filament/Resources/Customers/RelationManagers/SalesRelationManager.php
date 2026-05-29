@@ -5,16 +5,20 @@ declare(strict_types=1);
 namespace App\Filament\Resources\Customers\RelationManagers;
 
 use App\Filament\Resources\Sales\SaleResource;
+use App\Models\ProductVariant;
 use Filament\Actions\Action;
 use Filament\Actions\CreateAction;
-use Filament\Actions\ViewAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class SalesRelationManager extends RelationManager
 {
@@ -82,7 +86,8 @@ class SalesRelationManager extends RelationManager
                     ->money('BRL')
                     ->alignEnd()
                     ->weight('semibold')
-                    ->sortable(),
+                    ->sortable()
+                    ->summarize(Sum::make()->money('BRL')->label('Total no período')),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -117,6 +122,47 @@ class SalesRelationManager extends RelationManager
                 TernaryFilter::make('contains_water')
                     ->label('Contém galão de água')
                     ->native(false),
+
+                Filter::make('period')
+                    ->label('Período')
+                    ->form([
+                        DatePicker::make('from')->label('De'),
+                        DatePicker::make('until')->label('Até'),
+                    ])
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query
+                            ->when(
+                                $data['from'] ?? null,
+                                fn (Builder $q, string $date) => $q->whereDate('created_at', '>=', $date),
+                            )
+                            ->when(
+                                $data['until'] ?? null,
+                                fn (Builder $q, string $date) => $q->whereDate('created_at', '<=', $date),
+                            );
+                    }),
+
+                SelectFilter::make('variant_id')
+                    ->label('Produto')
+                    ->options(
+                        ProductVariant::query()
+                            ->with('product')
+                            ->get()
+                            ->mapWithKeys(fn (ProductVariant $variant): array => [
+                                $variant->id => "{$variant->sku} — {$variant->size}",
+                            ])
+                            ->all()
+                    )
+                    ->query(function (Builder $query, array $data): Builder {
+                        $value = $data['value'] ?? null;
+
+                        return $query->when(
+                            $value,
+                            fn (Builder $q) => $q->whereHas(
+                                'items',
+                                fn (Builder $sub) => $sub->where('variant_id', $value),
+                            ),
+                        );
+                    }),
             ])
             ->headerActions([
                 CreateAction::make()
