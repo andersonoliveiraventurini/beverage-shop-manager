@@ -172,3 +172,53 @@ it('exposes the resource navigation metadata', function () {
     expect(SaleResource::getNavigationLabel())->toBe('Vendas')
         ->and(SaleResource::getNavigationGroup())->toBe('Operação');
 });
+
+it('disables delivery_fee and building_fee for an attendant on the create form', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+
+    livewireTest(CreateSale::class)
+        ->assertFormFieldIsDisabled('delivery_fee')
+        ->assertFormFieldIsDisabled('building_fee');
+});
+
+it('enables delivery_fee and building_fee for a manager on the create form', function () {
+    $this->actingAs(User::factory()->manager()->create());
+
+    livewireTest(CreateSale::class)
+        ->assertFormFieldIsEnabled('delivery_fee')
+        ->assertFormFieldIsEnabled('building_fee');
+});
+
+it('disables delivery_fee and building_fee for an attendant on the edit form', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+
+    $sale = Sale::create([
+        'customer_id' => $this->customer->id,
+        'type' => 'delivery',
+        'payment_method' => 'cash',
+        'status' => 'open',
+        'delivery_fee' => 2.00,
+        'building_fee' => 1.00,
+    ]);
+
+    livewireTest(EditSale::class, ['record' => $sale->getRouteKey()])
+        ->assertFormFieldIsDisabled('delivery_fee')
+        ->assertFormFieldIsDisabled('building_fee');
+});
+
+it('enables delivery_fee and building_fee for a manager on the edit form', function () {
+    $this->actingAs(User::factory()->manager()->create());
+
+    $sale = Sale::create([
+        'customer_id' => $this->customer->id,
+        'type' => 'delivery',
+        'payment_method' => 'cash',
+        'status' => 'open',
+        'delivery_fee' => 2.00,
+        'building_fee' => 1.00,
+    ]);
+
+    livewireTest(EditSale::class, ['record' => $sale->getRouteKey()])
+        ->assertFormFieldIsEnabled('delivery_fee')
+        ->assertFormFieldIsEnabled('building_fee');
+});

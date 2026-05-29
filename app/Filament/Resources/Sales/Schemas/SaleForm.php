@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\Sales\Schemas;
 
+use App\Models\Customer;
+use App\Models\CustomerAddress;
 use App\Models\ProductVariant;
 use App\Models\SaleItem;
 use Filament\Forms\Components\DatePicker;
@@ -36,9 +38,10 @@ class SaleForm
                                     $set('delivery_fee', 0);
                                     $set('building_fee', 0);
                                     $set('address_id', null);
+
                                     return;
                                 }
-                                $customer = \App\Models\Customer::with('primaryAddress')->find($state);
+                                $customer = Customer::with('primaryAddress')->find($state);
                                 if (! $customer) {
                                     return;
                                 }
@@ -55,7 +58,8 @@ class SaleForm
                                 if (! $customerId) {
                                     return [];
                                 }
-                                return \App\Models\CustomerAddress::query()
+
+                                return CustomerAddress::query()
                                     ->where('customer_id', $customerId)
                                     ->orderByDesc('is_primary')
                                     ->get()
@@ -108,6 +112,7 @@ class SaleForm
                                             $set('modality', null);
                                             $set('returned_shell_expires_at', null);
                                             $set('delivered_shell_expires_at', null);
+
                                             return;
                                         }
                                         $variant = ProductVariant::find($state);
@@ -236,6 +241,11 @@ class SaleForm
                             ->numeric()
                             ->step('0.01')
                             ->default(0)
+                            ->disabled(fn () => ! optional(auth()->user())->isManager())
+                            ->dehydrated()
+                            ->helperText(fn () => optional(auth()->user())->isManager()
+                                ? null
+                                : 'Apenas o gerente pode alterar a taxa de entrega.')
                             ->visible(fn (Get $get) => $get('type') === 'delivery'),
 
                         TextInput::make('building_fee')
@@ -244,6 +254,11 @@ class SaleForm
                             ->numeric()
                             ->step('0.01')
                             ->default(0)
+                            ->disabled(fn () => ! optional(auth()->user())->isManager())
+                            ->dehydrated()
+                            ->helperText(fn () => optional(auth()->user())->isManager()
+                                ? null
+                                : 'Apenas o gerente pode alterar o adicional prédio.')
                             ->visible(fn (Get $get) => $get('type') === 'delivery'),
 
                         TextInput::make('out_of_area_override')
@@ -293,9 +308,10 @@ class SaleForm
         if (! $customerId) {
             return false;
         }
-        $inArea = \App\Models\Customer::query()
+        $inArea = Customer::query()
             ->whereKey($customerId)
             ->value('in_delivery_area');
+
         return $inArea === false || $inArea === 0;
     }
 
@@ -304,6 +320,7 @@ class SaleForm
         if (! $variantId) {
             return false;
         }
+
         return (bool) ProductVariant::query()
             ->whereKey($variantId)
             ->value('is_returnable');
@@ -320,6 +337,7 @@ class SaleForm
             return null;
         }
         $qty = $state['quantity'] ?? 1;
+
         return sprintf('%d × %s (%s)', (int) $qty, optional($variant->product)->name, $variant->size);
     }
 }

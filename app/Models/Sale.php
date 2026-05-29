@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Collection;
 
 class Sale extends Model
 {
@@ -16,19 +17,27 @@ class Sale extends Model
     use SoftDeletes;
 
     public const TYPE_COUNTER = 'counter';
+
     public const TYPE_DELIVERY = 'delivery';
 
     public const PAYMENT_CASH = 'cash';
+
     public const PAYMENT_PIX = 'pix';
+
     public const PAYMENT_DEBIT = 'debit';
+
     public const PAYMENT_CREDIT = 'credit';
 
     public const STATUS_OPEN = 'open';
+
     public const STATUS_CONFIRMED = 'confirmed';
+
     public const STATUS_CANCELLED = 'cancelled';
 
     public const TYPES = [self::TYPE_COUNTER, self::TYPE_DELIVERY];
+
     public const PAYMENT_METHODS = [self::PAYMENT_CASH, self::PAYMENT_PIX, self::PAYMENT_DEBIT, self::PAYMENT_CREDIT];
+
     public const STATUSES = [self::STATUS_OPEN, self::STATUS_CONFIRMED, self::STATUS_CANCELLED];
 
     protected $fillable = [
@@ -80,13 +89,25 @@ class Sale extends Model
         // logged so the manager has traceability of attendant adjustments.
         static::updating(function (Sale $sale): void {
             if ($sale->isDirty('out_of_area_override')) {
-                \App\Models\AuditLog::record(
+                AuditLog::record(
                     $sale,
-                    \App\Models\AuditLog::EVENT_OUT_OF_AREA_EDIT,
+                    AuditLog::EVENT_OUT_OF_AREA_EDIT,
                     'out_of_area_override',
                     $sale->getOriginal('out_of_area_override'),
                     $sale->out_of_area_override,
                 );
+            }
+
+            foreach (['delivery_fee', 'building_fee'] as $field) {
+                if ($sale->isDirty($field)) {
+                    AuditLog::record(
+                        $sale,
+                        AuditLog::EVENT_FEE_OVERRIDE,
+                        $field,
+                        $sale->getOriginal($field),
+                        $sale->{$field},
+                    );
+                }
             }
         });
 
@@ -117,21 +138,21 @@ class Sale extends Model
         $itemsSettledNow = collect();
 
         foreach ($this->items as $item) {
-            $exists = \App\Models\StockMovement::query()
-                ->where('source_type', \App\Models\SaleItem::class)
+            $exists = StockMovement::query()
+                ->where('source_type', SaleItem::class)
                 ->where('source_id', $item->id)
-                ->where('direction', \App\Models\StockMovement::DIRECTION_OUT)
-                ->where('reason', \App\Models\StockMovement::REASON_SALE)
+                ->where('direction', StockMovement::DIRECTION_OUT)
+                ->where('reason', StockMovement::REASON_SALE)
                 ->exists();
             if ($exists) {
                 continue;
             }
-            \App\Models\StockMovement::create([
+            StockMovement::create([
                 'variant_id' => $item->variant_id,
-                'direction' => \App\Models\StockMovement::DIRECTION_OUT,
-                'reason' => \App\Models\StockMovement::REASON_SALE,
+                'direction' => StockMovement::DIRECTION_OUT,
+                'reason' => StockMovement::REASON_SALE,
                 'quantity' => (int) $item->quantity,
-                'source_type' => \App\Models\SaleItem::class,
+                'source_type' => SaleItem::class,
                 'source_id' => $item->id,
                 'user_id' => $this->user_id,
             ]);
@@ -160,32 +181,32 @@ class Sale extends Model
         $itemsReversedNow = collect();
 
         foreach ($this->items as $item) {
-            $out = \App\Models\StockMovement::query()
-                ->where('source_type', \App\Models\SaleItem::class)
+            $out = StockMovement::query()
+                ->where('source_type', SaleItem::class)
                 ->where('source_id', $item->id)
-                ->where('direction', \App\Models\StockMovement::DIRECTION_OUT)
-                ->where('reason', \App\Models\StockMovement::REASON_SALE)
+                ->where('direction', StockMovement::DIRECTION_OUT)
+                ->where('reason', StockMovement::REASON_SALE)
                 ->first();
             if (! $out) {
                 continue;
             }
 
-            $alreadyReversed = \App\Models\StockMovement::query()
-                ->where('source_type', \App\Models\SaleItem::class)
+            $alreadyReversed = StockMovement::query()
+                ->where('source_type', SaleItem::class)
                 ->where('source_id', $item->id)
-                ->where('direction', \App\Models\StockMovement::DIRECTION_IN)
-                ->where('reason', \App\Models\StockMovement::REASON_SALE_REVERSAL)
+                ->where('direction', StockMovement::DIRECTION_IN)
+                ->where('reason', StockMovement::REASON_SALE_REVERSAL)
                 ->exists();
             if ($alreadyReversed) {
                 continue;
             }
 
-            \App\Models\StockMovement::create([
+            StockMovement::create([
                 'variant_id' => $item->variant_id,
-                'direction' => \App\Models\StockMovement::DIRECTION_IN,
-                'reason' => \App\Models\StockMovement::REASON_SALE_REVERSAL,
+                'direction' => StockMovement::DIRECTION_IN,
+                'reason' => StockMovement::REASON_SALE_REVERSAL,
                 'quantity' => (int) $out->quantity,
-                'source_type' => \App\Models\SaleItem::class,
+                'source_type' => SaleItem::class,
                 'source_id' => $item->id,
                 'user_id' => $this->user_id,
             ]);
@@ -194,7 +215,7 @@ class Sale extends Model
 
         if ($itemsReversedNow->isNotEmpty()) {
             // Flip the flag from whatever DB has — fresh read avoids stale-instance issues.
-            \App\Models\Sale::query()->whereKey($this->id)->update(['stock_settled' => false]);
+            Sale::query()->whereKey($this->id)->update(['stock_settled' => false]);
             $this->stock_settled = false;
 
             $this->syncShellLedger(direction: 'in', onlyItems: $itemsReversedNow);
@@ -214,9 +235,9 @@ class Sale extends Model
      * No-op when the global toggle is off, when the sale has no customer (counter
      * sale to walk-in), or when the item is not returnable.
      */
-    public function syncShellLedger(string $direction, ?\Illuminate\Support\Collection $onlyItems = null): void
+    public function syncShellLedger(string $direction, ?Collection $onlyItems = null): void
     {
-        if (! \App\Models\DeliverySetting::trackingShells()) {
+        if (! DeliverySetting::trackingShells()) {
             return;
         }
         if (! $this->customer_id) {
@@ -236,13 +257,13 @@ class Sale extends Model
             $qty = (int) $item->quantity;
 
             match ($item->modality) {
-                \App\Models\SaleItem::MODALITY_FULL,
-                \App\Models\SaleItem::MODALITY_SHELL_ONLY => $this->bumpLedger(
+                SaleItem::MODALITY_FULL,
+                SaleItem::MODALITY_SHELL_ONLY => $this->bumpLedger(
                     $item->variant_id,
                     $item->delivered_shell_expires_at,
                     $sign * $qty,
                 ),
-                \App\Models\SaleItem::MODALITY_EXCHANGE => (function () use ($item, $sign, $qty) {
+                SaleItem::MODALITY_EXCHANGE => (function () use ($item, $sign, $qty) {
                     $this->bumpLedger($item->variant_id, $item->delivered_shell_expires_at, $sign * $qty);
                     $this->bumpLedger($item->variant_id, $item->returned_shell_expires_at, -$sign * $qty);
                 })(),
@@ -257,7 +278,7 @@ class Sale extends Model
             return;
         }
 
-        $entry = \App\Models\WaterShellLedger::firstOrNew([
+        $entry = WaterShellLedger::firstOrNew([
             'customer_id' => $this->customer_id,
             'variant_id' => $variantId,
             'expires_at' => $expiresAt,
@@ -298,7 +319,7 @@ class Sale extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\User::class);
+        return $this->belongsTo(User::class);
     }
 
     public function items(): HasMany
@@ -308,7 +329,7 @@ class Sale extends Model
 
     public function delivery()
     {
-        return $this->hasOne(\App\Models\Delivery::class);
+        return $this->hasOne(Delivery::class);
     }
 
     /**
@@ -324,9 +345,9 @@ class Sale extends Model
             return;
         }
 
-        \App\Models\Delivery::create([
+        Delivery::create([
             'sale_id' => $this->id,
-            'status' => \App\Models\Delivery::STATUS_PENDING,
+            'status' => Delivery::STATUS_PENDING,
         ]);
     }
 }
