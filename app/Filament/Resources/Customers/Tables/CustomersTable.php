@@ -9,6 +9,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
@@ -42,7 +43,7 @@ class CustomersTable
                     ->searchable(
                         query: fn ($query, string $search) => $query->orWhereHas(
                             'phones',
-                            fn ($q) => $q->where('number', 'like', '%' . $search . '%'),
+                            fn ($q) => $q->where('number', 'like', '%'.$search.'%'),
                         ),
                     ),
 
@@ -82,6 +83,7 @@ class CustomersTable
                     ->native(false),
             ])
             ->recordActions([
+                ViewAction::make(),
                 EditAction::make(),
             ])
             ->toolbarActions([

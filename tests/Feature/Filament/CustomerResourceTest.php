@@ -7,6 +7,7 @@ use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Customers\Pages\CreateCustomer;
 use App\Filament\Resources\Customers\Pages\EditCustomer;
 use App\Filament\Resources\Customers\Pages\ListCustomers;
+use App\Filament\Resources\Customers\Pages\ViewCustomer;
 use App\Filament\Resources\Customers\RelationManagers\PhonesRelationManager;
 use App\Filament\Resources\Customers\RelationManagers\SalesRelationManager;
 use App\Models\Customer;
@@ -89,6 +90,36 @@ it('persists has_manual_fee_override when creating a customer through the Filame
     expect(Customer::where('name', 'Cliente Manual Override')->first())
         ->not->toBeNull()
         ->has_manual_fee_override->toBeTrue();
+});
+
+it('renders the ViewCustomer page and shows customer name', function () {
+    $customer = Customer::factory()->create(['name' => 'João Infolist']);
+
+    livewireTest(ViewCustomer::class, ['record' => $customer->getKey()])
+        ->assertOk()
+        ->assertSee('João Infolist');
+});
+
+it('shows "Manual" fee source label for customers with manual override', function () {
+    $customer = Customer::factory()->create([
+        'name' => 'Cliente Taxa Manual',
+        'has_manual_fee_override' => true,
+    ]);
+
+    livewireTest(ViewCustomer::class, ['record' => $customer->getKey()])
+        ->assertOk()
+        ->assertSee('Manual');
+});
+
+it('shows "Automática" fee source label for customers without manual override', function () {
+    $customer = Customer::factory()->create([
+        'name' => 'Cliente Taxa Auto',
+        'has_manual_fee_override' => false,
+    ]);
+
+    livewireTest(ViewCustomer::class, ['record' => $customer->getKey()])
+        ->assertOk()
+        ->assertSee('Automática');
 });
 
 it('recomputeFees skips a customer whose has_manual_fee_override is true', function () {
