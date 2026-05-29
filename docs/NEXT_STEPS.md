@@ -1,9 +1,12 @@
 # Next Steps — FA Distribuidora
 
 > **Snapshot date**: 2026-05-29
-> **State**: MVP F01–F16 ships in code, **plus two integrated post-MVP surfaces — F19 PDV counter page (`/admin/pos`) and F20 public storefront (`/`) — and the Polish P1 front (Track 5, items 5.1–5.9)**. **254 Pest tests green (1 skipped, 725 assertions)** — including a panel-wide E2E sweep (`PanelE2ESweepTest`), `PointOfSaleTest` and `HomePageTest`. F18 WhatsApp Inbox specced as Phase H. The `feat/pos-counter-sales` and `feat/public-homepage` branches were consolidated into `main` on 2026-05-29; the Polish P1 work lives on `feat/polish-p1`. The Board DEC-001 security gate (off-host Drive backup wiring) is now on `main`.
+> ## 🎯 THE ONLY METRIC THAT MATTERS: `days in production = 0`
+> Not test count, not closed criteria. The family business is still 100% on paper. **Code is frozen until M7 go-live** (a `commit-msg` git hook rejects `app/` commits not tagged `[M7]`/`[hotfix]`; park ideas in [`docs/PARKING_LOT.md`](PARKING_LOT.md)).
 >
-> **Board of Advisors — DEC-001 (2026-05-23): _ship beats build._** The four councils converged: the highest-leverage action is putting the MVP into real production, not more code. Recommended near-term sequence: **(1)** wire the *off-host* Drive backup (the security gate — the Oracle Free Tier is a single point of failure and the rollback runbook depends on it) → **(2)** M7 cut-over → **(3)** ~30 days of real usage → **(4)** _only then_ reassess F18 vs hardening vs polish, driven by real data. **Defer F18, P1 polish and hardening until then.**
+> **State**: MVP F01–F16 + F19 PDV + F20 storefront + the **Polish P1 front (Track 5, 5.1–5.9)** all ship in code and are on `origin/main`. **260 Pest tests green (1 skipped)**. The DEC-002 backup-gate code is closed: a real **restorable** logical dump, the **`fa:restore-database`** command with a **proven round-trip test**, and **production fails loud** when no off-host copy leaves the host. F18 WhatsApp Inbox stays parked (Phase H).
+>
+> **Board of Advisors — DEC-001 (2026-05-23) AND DEC-002 (2026-05-29): _ship beats build_ (reaffirmed, VERY HIGH).** DEC-001 said stop building and ship; in the 6 days after, three more code fronts were built instead. DEC-002 (unanimous) ruled the codebase healthy but the *project failing* (0% of goal), named the build-avoidance pattern, and prescribed: **(0)** push + protect work ✅ done · **(1)** structural freeze (commit-guard + parking-lot) ✅ done · **(2)** close the backup gate *for real* — code done ✅; the **host steps remain** (install `google/apiclient`, OAuth grant, real `mysqldump`, verify file in Drive, **prove a restore**, monitoring) · **(3)** M7 cut-over · **(4)** ~30 days real usage *then* reassess F18/hardening/polish. **No new scope until the family is off paper.**
 
 This document is the operational roadmap. Tracks are listed **in the order you should attack them**. Each track is self-contained — owner, effort, dependencies and blockers up front so you can pick the top open track and run.
 
@@ -13,16 +16,16 @@ This document is the operational roadmap. Tracks are listed **in the order you s
 
 | # | Track | Status | Calendar | Unblocks |
 |---|---|---|---|---|
-| 1 | **Push consolidated `main` (PDV + storefront merged)** | 🟡 Open | 1 min | Gets the integrated branches onto origin/main |
-| 2 | **M7 — Production cut-over** | 🟡 Open | ~2 weeks (1 day code + 10 days parallel-usage) | The whole point of the project |
-| 3 | **M6 — Google integrations live (F15 + F16)** | 🟡 Open (substrate done) | ~½ day human + ~½ day code | Drive backup runs unattended; Contacts sync replaces manual entry |
+| 1 | **Push `main` + protect work** | ✅ Done 2026-05-29 | — | 14 commits + gate-closing pushed to origin/main (copy `.board/` off-machine — it's gitignored) |
+| 2 | **Backup gate LIVE on the host (DEC-002 §2)** 🔒 | 🟡 Open — **blocks everything** | ~½ day human | Install `google/apiclient` + OAuth grant + real `mysqldump` + verify file in Drive + **prove a restore** (`fa:restore-database`). Code done; host steps pending. NO real data before this is proven |
+| 3 | **M7 — Production cut-over** | 🟡 Open | ~2 weeks (deploy + 10 days humane parallel-usage) | The whole point of the project — the family off paper |
 | 4 | **M8 — F18 WhatsApp Inbox (Phase H)** | ⛔ Spec done, code not started | ~2.5 weeks | Closes the biggest operational gap after cut-over |
 | 5 | **P1 polish** | ✅ Shipped (9/10 on `feat/polish-p1`) | — | Items 5.1–5.9 done; 5.10 (Google import preview) deferred to the F16 OAuth grant |
 | 6 | **Hardening for first-month traffic** | 🟡 Open | ~1 week, scattered | Defensive — addresses the foot-guns once the manager and attendants are typing |
 | 7 | **Post-MVP P1 features** | ⛔ Not started | Each L/M | Only worth doing once production data exists |
 | 8 | **Doc maintenance** | 🟢 Continuous | 5 min per commit | The PRD, the plan and the runbooks stay in sync as we ship |
 
-The next thing to **do** is Track 1 (push this session's branch). Then, per **Board decision DEC-001**, do the **off-host Drive backup half of Track 3 (M6)** as the security gate *before* Track 2 (M7 cut-over) — never aim real production data at a single Oracle host with no off-host backup. Track 4 (F18) and Tracks 5–6 (polish/hardening) wait until ~30 days of real usage produce signal.
+The next thing to **do** (push is done) is the **backup gate LIVE on the host** — the one item that both blocks go-live and cannot be rationalized into more features. Then **M7 cut-over**. Per **DEC-002**, nothing else — no F18, no further polish, no hardening — until the family has used the system in production for ~30 days. Code is frozen (`[M7]`/`[hotfix]` only); everything else goes to [`PARKING_LOT.md`](PARKING_LOT.md).
 
 ---
 
