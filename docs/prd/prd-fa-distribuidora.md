@@ -1,9 +1,9 @@
 # PRD — FA Distribuidora Management System
 
-> **Version**: 1.7.1
-> **Status**: Draft — Code-complete MVP (Phases 0 → G); awaiting Google OAuth grant, training and production cut-over. **F18 WhatsApp Inbox specced as the next MVP+ increment (Phase H, milestone M8)**
+> **Version**: 1.8.0
+> **Status**: Draft — Code-complete MVP (Phases 0 → G) **plus two integrated post-MVP surfaces — F19 PDV counter page and F20 public storefront landing page**; awaiting Google OAuth grant, training and production cut-over. **F18 WhatsApp Inbox specced as the next MVP+ increment (Phase H, milestone M8)**
 > **Created**: 2026-05-09
-> **Last Updated**: 2026-05-19
+> **Last Updated**: 2026-05-29
 > **Author**: Anderson de Oliveira Venturini
 > **Customer**: FA Distribuidora — Water · Beverages · Charcoal (Av. Transamazônica, 1197 — Jardim Garcia, Campinas-SP, Brazil)
 > **Staging / testing URL**: <https://fa.andersonventurini.cloud>
@@ -60,10 +60,12 @@ Snapshot of the codebase against the MVP feature list (last audited **2026-05-19
 | F15 | Automated Backup to Google Drive | 🟡 Code substrate done; awaiting OAuth grant | `fa:backup-database` command + `BackupRun` model + `GoogleDriveUploader` seam. Owner runs the one-time OAuth grant per [`docs/RUNBOOK_GOOGLE.md`](../RUNBOOK_GOOGLE.md) |
 | F16 | Two-Way Sync with Google Contacts | 🟡 Code substrate done; awaiting OAuth grant | `GoogleContactsSync` service (pull + push) with last-write-wins reconciliation, sync-token persistence, paused-flag respect |
 | F18 | WhatsApp Conversational Inbox (Evolution API) | ⛔ New scope — **next MVP+ increment** | Self-hosted Evolution alongside FA app; matched by normalized phone; **operator-initiated only** (no auto-reply); "Iniciar venda" pre-fills CreateSale. See Phase H in [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) |
+| F19 | Point-of-Sale (PDV) Counter Page | ✅ Done — post-MVP | Dedicated `/admin/pos` Filament page (`PointOfSale`) — one-click category-tabbed catalog grid, live cart + running total, cash-change calc, customer picker + delivery mode, finalize modal. Reuses `Sale`/`SaleItem` persistence; complements (does not replace) `SaleResource::create`. Design spec: [`docs/superpowers/specs/2026-05-23-pos-counter-sales-design.md`](../superpowers/specs/2026-05-23-pos-counter-sales-design.md) |
+| F20 | Public Storefront / Landing Page | ✅ Done — post-MVP (scope decision) | Read-only public homepage at `/` (`HomeController` + `home.blade.php`): catalog showcase, depot info and a WhatsApp CTA. **Sanctioned as a marketing landing page** — no auth, no ordering, no customer self-service — so it does **not** reopen the "customer-facing portal" out-of-scope item (which remains out of scope). Brand-gate compliant |
 
 **Cross-cutting**: role-based access (`manager` / `attendant` / `deliverer`) enforced through six Filament policies + a locked access-matrix test; **NFR-01 brand compliance gate** automated; password reset routes wired (production Gmail SMTP credentials land with the F15/F16 OAuth grant).
 
-**Quantitative summary**: every MVP feature is **shipped** in code. Two integrations (F15, F16) wait on a one-time human-driven OAuth grant; one runbook (training + cut-over) waits on on-site availability. Tests: **132 passed, 1 pre-existing skip, 395 assertions**.
+**Quantitative summary**: every MVP feature is **shipped** in code, plus two integrated post-MVP surfaces (F19 PDV + F20 storefront). Two integrations (F15, F16) wait on a one-time human-driven OAuth grant; one runbook (training + cut-over) waits on on-site availability. Tests: **207 passed, 1 pre-existing skip, 559 assertions** (includes the panel-wide `PanelE2ESweepTest`, `PointOfSaleTest` and `HomePageTest`).
 
 ### Deviations from PRD
 
@@ -488,6 +490,43 @@ A full-stack web app built on Laravel 12 + Livewire 3, with a Brazilian-Portugue
 **Out of scope (deferred to a future major)**:
 - Migration to the official Meta WhatsApp Business API + template approval workflow.
 - Customer-facing bot / IVR / menu of products.
+
+---
+
+#### F19: Point-of-Sale (PDV) Counter Page (post-MVP)
+
+**Description**: A dedicated custom Filament page at `/admin/pos` optimized for high-frequency counter selling. The existing `SaleResource::create` form (a tall `Repeater` with no live total) stays for editing/audit-heavy flows; the PDV is the fast path. The attendant adds products in one click from a searchable, category-tabbed catalog grid, sees a live cart + running total, gets a cash-change calculator, and can switch to delivery mode with a customer picker. All persistence (stock settlement, shell ledger, total calculation) reuses the existing `Sale` / `SaleItem` domain logic.
+
+**Story**: As an attendant, I want to ring up a counter sale in seconds from a one-click catalog grid with a live total, instead of opening a select and typing quantities row by row.
+
+**Acceptance criteria**:
+- [x] Dedicated `/admin/pos` page (`app/Filament/Pages/PointOfSale.php`) — manager + attendant
+- [x] One-click add from a category-tabbed, searchable catalog grid
+- [x] Live cart with running subtotal/total + quantity steppers
+- [x] Cash-change calculation on the finalize modal
+- [x] Delivery mode with customer picker (pre-resolved fees) + counter mode
+- [x] Non-manager `unit_price` re-derived on finalize (no client-side price tampering)
+- [x] Reuses `Sale`/`SaleItem` persistence — stock settlement + shell ledger intact
+- [x] Brand-gate compliant; covered by `tests/Feature/Filament/PointOfSaleTest.php`
+
+**Design spec**: [`docs/superpowers/specs/2026-05-23-pos-counter-sales-design.md`](../superpowers/specs/2026-05-23-pos-counter-sales-design.md) · **Plan**: [`docs/superpowers/plans/2026-05-23-pos-counter-sales.md`](../superpowers/plans/2026-05-23-pos-counter-sales.md)
+
+---
+
+#### F20: Public Storefront / Landing Page (post-MVP — scope decision)
+
+**Description**: A read-only public homepage served at `/` (`HomeController` + `resources/views/home.blade.php`) presenting the catalog showcase, depot information (address / hours / contact from `config('brand.*')`) and a WhatsApp call-to-action. It is a **marketing landing page**, not a customer portal: no authentication, no cart, no ordering, no customer self-service.
+
+**Scope decision (2026-05-29)**: the §4 *Explicitly Out of Scope (v1.0)* line "Customer-facing portal/app" targets a transactional self-service portal (login + ordering + payments) — that item **remains out of scope**. A static, read-only landing page that drives orders to the existing WhatsApp/phone channel does not reopen it and is explicitly **sanctioned**. Orders still arrive via phone / WhatsApp / counter and are recorded by an attendant (per §2).
+
+**Story**: As the owner, I want a public page that looks like an extension of the flyer and storefront, so customers who search for FA online find the catalog, the address and a one-tap WhatsApp button.
+
+**Acceptance criteria**:
+- [x] Public `GET /` route → `HomeController` (no auth) renders the storefront
+- [x] Catalog showcase + depot info (address / hours) from `config('brand.*')`
+- [x] WhatsApp CTA driving orders to the existing channel
+- [x] Brand-gate compliant (`tests/Feature/DesignSystemTest.php`); covered by `tests/Feature/HomePageTest.php`
+- [x] Read-only — no auth, no cart, no ordering (does not reopen the customer-portal out-of-scope item)
 
 ---
 
@@ -1184,3 +1223,4 @@ gantt
 | 1.6.1 | 2026-05-19 | Anderson de Oliveira Venturini | **Doc-refresh pass.** §4 acceptance criteria flipped to match the shipped reality: F01 (3/3), F02 (4/4), F03 (5/5), F04 (6/7 — empty-shell global counter intentionally absent), F05 (4/4), F06 (5/5), F07 (6/6), F09 (8/9 — fee-row authorization is a P1 polish), F10 (4/6 — toggle + infolist are P1 polish), F11 (4/5 — explicit filter chips are P1 polish), F12 (5/6 — CSV/XLSX export is P1 polish), F13 (4/7 — date-range filter + top-customers chart + PDF export are P1 polish), F15 + F16 annotated `⚠️ code substrate done, awaiting OAuth grant`. README rewritten with current doc map, fa-test:php84 quickstart, role matrix and code map. New top-level [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) consolidates the six tracks of pending work |
 | 1.7.0 | 2026-05-19 | Anderson de Oliveira Venturini | **New scope: F18 — WhatsApp Conversational Inbox via Evolution API.** Specced as the next MVP+ increment (Phase H, milestone M8 — target 2026-09-15). Scope discipline decisions captured: self-hosted Evolution on the FA host, matched by normalized phone, operator-initiated only (no auto-reply / no scheduled broadcasts) to keep ban risk low on the existing FA number; text-only in MVP. Header action "Iniciar venda" opens CreateSale pre-filled. Implementation Status table grew a F18 row; Milestones grew M8. Companion plan landed as Phase H in [`docs/IMPLEMENTATION_PLAN.md`](../IMPLEMENTATION_PLAN.md) and as Track 7 in [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) |
 | 1.7.1 | 2026-05-19 | Anderson de Oliveira Venturini | **Doc-coherence pass.** [`docs/NEXT_STEPS.md`](../NEXT_STEPS.md) reorganized in real execution order (Push → M7 cut-over → M6 Google live → M8 WhatsApp → polish → hardening → post-MVP → doc maintenance) with a Priority Map block at the top showing status / calendar / unblocks per track. README header gained an F18 mention and the doc-map row was updated. No code change |
+| 1.8.0 | 2026-05-29 | Anderson de Oliveira Venturini | **Branch consolidation + new post-MVP scope.** Integrated two divergent feature branches into `main`: `feat/pos-counter-sales` (PDV counter page + real Google Drive client wiring + panel-wide E2E sweep + brand-gate hardening) fast-forwarded, then `feat/public-homepage` (public storefront) merged clean. Documented the two surfaces: **F19 — Point-of-Sale (PDV) Counter Page** (`/admin/pos`) and **F20 — Public Storefront / Landing Page** (`/`), the latter with a scope decision sanctioning it as a read-only marketing page that does **not** reopen the customer-portal out-of-scope item. Test count updated **132 → 207 passed (559 assertions)**. Drive-backup wiring (the Board DEC-001 security gate) is now on `main`, not stranded on a branch |

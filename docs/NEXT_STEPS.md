@@ -1,7 +1,7 @@
 # Next Steps — FA Distribuidora
 
-> **Snapshot date**: 2026-05-23
-> **State**: MVP F01–F16 ships in code. **181 Pest tests green (1 skipped)** — including a panel-wide E2E sweep (`PanelE2ESweepTest`) added 2026-05-23 that mounts every route, submits every create form and renders every screen. F18 WhatsApp Inbox specced as Phase H.
+> **Snapshot date**: 2026-05-29
+> **State**: MVP F01–F16 ships in code, **plus two integrated post-MVP surfaces — F19 PDV counter page (`/admin/pos`) and F20 public storefront (`/`)**. **207 Pest tests green (1 skipped, 559 assertions)** — including a panel-wide E2E sweep (`PanelE2ESweepTest`), `PointOfSaleTest` and `HomePageTest`. F18 WhatsApp Inbox specced as Phase H. The `feat/pos-counter-sales` and `feat/public-homepage` branches were consolidated into `main` on 2026-05-29 (PDV fast-forwarded, storefront merged clean); the Board DEC-001 security gate (off-host Drive backup wiring) is now on `main`.
 >
 > **Board of Advisors — DEC-001 (2026-05-23): _ship beats build._** The four councils converged: the highest-leverage action is putting the MVP into real production, not more code. Recommended near-term sequence: **(1)** wire the *off-host* Drive backup (the security gate — the Oracle Free Tier is a single point of failure and the rollback runbook depends on it) → **(2)** M7 cut-over → **(3)** ~30 days of real usage → **(4)** _only then_ reassess F18 vs hardening vs polish, driven by real data. **Defer F18, P1 polish and hardening until then.**
 
@@ -13,7 +13,7 @@ This document is the operational roadmap. Tracks are listed **in the order you s
 
 | # | Track | Status | Calendar | Unblocks |
 |---|---|---|---|---|
-| 1 | **Push the `chore/e2e-sweep-and-nav-fixes` branch + open PR** | 🟡 Open | 2 min | Lands this session's E2E sweep + visual/brand-gate fixes |
+| 1 | **Push consolidated `main` (PDV + storefront merged)** | 🟡 Open | 1 min | Gets the integrated branches onto origin/main |
 | 2 | **M7 — Production cut-over** | 🟡 Open | ~2 weeks (1 day code + 10 days parallel-usage) | The whole point of the project |
 | 3 | **M6 — Google integrations live (F15 + F16)** | 🟡 Open (substrate done) | ~½ day human + ~½ day code | Drive backup runs unattended; Contacts sync replaces manual entry |
 | 4 | **M8 — F18 WhatsApp Inbox (Phase H)** | ⛔ Spec done, code not started | ~2.5 weeks | Closes the biggest operational gap after cut-over |
@@ -26,15 +26,15 @@ The next thing to **do** is Track 1 (push this session's branch). Then, per **Bo
 
 ---
 
-## Track 1 — Push pending doc commits
+## Track 1 — Push consolidated `main`
 
-Two commits sit local on `main` (the doc-refresh after Phase G and the F18 spec registration). The harness blocks direct pushes to `main`; the user must push from a regular terminal.
+On 2026-05-29 the two divergent feature branches were merged into `main`: `feat/pos-counter-sales` (PDV + Drive client wiring + E2E sweep + brand hardening) fast-forwarded, then `feat/public-homepage` (storefront) merged clean. Full Pest suite green (207 passed / 1 skip). The harness blocks direct pushes to `main`; push from a regular terminal.
 
 | Step | Command | Notes |
 |---|---|---|
-| 1.1 | `git log origin/main..HEAD --oneline` | Confirm what's about to be pushed |
+| 1.1 | `git log origin/main..HEAD --oneline` | Confirm the merged commits + the v1.8.0 doc commit are about to be pushed |
 | 1.2 | `git push origin main` | Run from a normal terminal (Claude Code's auto-classifier blocks this) |
-| 1.3 | Verify on GitHub | Two new commits on `main`; `docs/NEXT_STEPS.md` and `docs/prd/prd-fa-distribuidora.md` reflect v1.7.0 |
+| 1.3 | Verify on GitHub | `main` carries the PDV, storefront and v1.8.0 docs; PRD reflects F19 + F20 |
 
 **Blockers**: none.
 
