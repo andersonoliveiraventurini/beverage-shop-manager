@@ -5,8 +5,10 @@ namespace App\Providers\Filament;
 use App\Filament\Pages\Dashboard;
 use App\Filament\Widgets\ExpiringProducts;
 use App\Filament\Widgets\ExpiringShells;
+use App\Filament\Widgets\MonthlyEvolutionChart;
 use App\Filament\Widgets\PaymentMethodBreakdown;
 use App\Filament\Widgets\SalesKpis;
+use App\Filament\Widgets\TopCustomersTable;
 use App\Filament\Widgets\TopProductsTable;
 use App\Filament\Widgets\WaterVsRestChart;
 use Filament\Http\Middleware\Authenticate;
@@ -73,6 +75,8 @@ class AdminPanelProvider extends PanelProvider
                 PaymentMethodBreakdown::class,
                 WaterVsRestChart::class,
                 TopProductsTable::class,
+                TopCustomersTable::class,
+                MonthlyEvolutionChart::class,
                 ExpiringProducts::class,
                 ExpiringShells::class,
                 FilamentInfoWidget::class,
