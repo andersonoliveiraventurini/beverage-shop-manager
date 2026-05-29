@@ -2,6 +2,40 @@
     <div wire:poll.{{ $this->pollSeconds }}s>
         <x-fa.wave-divider color="azul-cristal" />
 
+        {{-- Filters --}}
+        <div class="mt-4 flex flex-wrap gap-4 items-end">
+            <div class="flex flex-col gap-1">
+                <label class="text-sm font-semibold" style="color: var(--fa-azul-profundo);">
+                    Bairro
+                </label>
+                <select
+                    wire:model.live="districtFilter"
+                    class="rounded border px-3 py-1.5 text-sm"
+                    style="border-color: var(--fa-azul-profundo); color: var(--fa-azul-profundo); background: var(--fa-branco-mineral);"
+                >
+                    <option value="">Todos</option>
+                    @foreach ($this->getDistrictOptions() as $district)
+                        <option value="{{ $district }}">{{ $district }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="flex flex-col gap-1">
+                <label class="text-sm font-semibold" style="color: var(--fa-azul-profundo);">
+                    Status
+                </label>
+                <select
+                    wire:model.live="statusFilter"
+                    class="rounded border px-3 py-1.5 text-sm"
+                    style="border-color: var(--fa-azul-profundo); color: var(--fa-azul-profundo); background: var(--fa-branco-mineral);"
+                >
+                    <option value="">Pendente + Em rota</option>
+                    <option value="{{ \App\Models\Delivery::STATUS_PENDING }}">Pendente</option>
+                    <option value="{{ \App\Models\Delivery::STATUS_EN_ROUTE }}">Em rota</option>
+                </select>
+            </div>
+        </div>
+
         @php
             $pending = $this->getPendingDeliveries();
             $completed = $this->getCompletedTodayDeliveries();
@@ -23,16 +57,16 @@
                             <div class="flex items-start justify-between">
                                 <div>
                                     <div class="font-bold" style="font-family: var(--font-display);">
-                                        Venda #{{ $delivery->sale_id }} —
-                                        {{ optional($delivery->sale->customer)->name ?? '— sem cliente —' }}
+                                        Venda #{{ $delivery->sale_id }} &mdash;
+                                        {{ optional($delivery->sale->customer)->name ?? '-- sem cliente --' }}
                                     </div>
                                     <div class="text-sm opacity-80 mt-1">
-                                        {{ optional($delivery->sale->address)->full_address ?? 'Endereço não definido' }}
+                                        {{ optional($delivery->sale->address)->full_address ?? 'Endereco nao definido' }}
                                     </div>
                                     <div class="text-sm mt-2">
                                         <span class="font-semibold">Total:</span>
                                         R$ {{ number_format((float) $delivery->sale->total, 2, ',', '.') }}
-                                        ·
+                                        &middot;
                                         <span class="font-semibold">Pagamento:</span> {{ Str::title($delivery->sale->payment_method) }}
                                     </div>
                                 </div>
@@ -78,12 +112,12 @@
 
         <section class="mt-6">
             <h2 class="text-lg font-bold mb-3" style="font-family: var(--font-display); color: var(--fa-azul-profundo);">
-                Concluídas hoje ({{ $completed->count() }})
+                Concluidas hoje ({{ $completed->count() }})
             </h2>
 
             @if ($completed->isEmpty())
                 <div class="rounded-lg border border-dashed p-6 text-center opacity-70">
-                    Nenhuma entrega concluída hoje ainda.
+                    Nenhuma entrega concluida hoje ainda.
                 </div>
             @else
                 <ul class="space-y-2">
@@ -91,10 +125,10 @@
                         <li class="rounded border p-3 flex justify-between"
                             style="background: var(--fa-branco-mineral); border-color: color-mix(in srgb, var(--fa-azul-profundo) 20%, transparent);">
                             <span>
-                                #{{ $delivery->sale_id }} ·
-                                {{ optional($delivery->sale->customer)->name ?? '—' }}
+                                #{{ $delivery->sale_id }} &middot;
+                                {{ optional($delivery->sale->customer)->name ?? '--' }}
                                 <span class="text-sm opacity-70">
-                                    · {{ optional($delivery->completed_at)->format('H:i') }}
+                                    &middot; {{ optional($delivery->completed_at)->format('H:i') }}
                                 </span>
                             </span>
                             <span class="font-semibold">
