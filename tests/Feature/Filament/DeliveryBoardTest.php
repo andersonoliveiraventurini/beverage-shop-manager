@@ -153,7 +153,7 @@ it('exposes the receipt route', function () {
         ->get(route('sales.receipt', ['sale' => $sale]))
         ->assertOk()
         ->assertSee('DISK ENTREGAS')
-        ->assertSee('BEBIDAS');
+        ->assertSee('ÁGUA · BEBIDAS · CARVÃO');
 });
 
 it("blocks deliverers from seeing other deliverer's receipts", function () {
