@@ -355,6 +355,25 @@ it('computes cash change due only when paying cash', function () {
     expect((float) $page->instance()->changeDue)->toBe(0.0);
 });
 
+it('computes the cash shortfall only when paying cash and tendered is below the total', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+
+    $page = livewireTest(PointOfSale::class)
+        ->call('addVariant', $v['soda']->id)   // 13.00
+        ->set('payment_method', 'cash')
+        ->set('cashTendered', 10.00);
+    expect((float) $page->instance()->cashShortfall)->toBe(3.00);
+
+    // Enough cash tendered → no shortfall.
+    $page->set('cashTendered', 20.00);
+    expect((float) $page->instance()->cashShortfall)->toBe(0.0);
+
+    // Non-cash methods never report a shortfall.
+    $page->set('payment_method', 'pix')->set('cashTendered', 0.0);
+    expect((float) $page->instance()->cashShortfall)->toBe(0.0);
+});
+
 /* ---- Follow-up: Enter shortcut (addFirstMatch) ---- */
 
 it('adds the only catalog match via addFirstMatch and ignores ambiguous searches', function () {

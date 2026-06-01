@@ -50,7 +50,7 @@
                             <ul class="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg dark:border-white/10 dark:bg-gray-900">
                                 @foreach ($this->customerResults as $c)
                                     <li>
-                                        <button type="button" wire:click="selectCustomer({{ $c['id'] }})" class="block w-full px-3 py-2 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5">{{ $c['name'] }}</button>
+                                        <button type="button" wire:click="selectCustomer({{ $c['id'] }})" class="flex min-h-[44px] w-full items-center px-3 py-2.5 text-left text-sm hover:bg-gray-50 dark:hover:bg-white/5">{{ $c['name'] }}</button>
                                     </li>
                                 @endforeach
                             </ul>
@@ -89,7 +89,7 @@
                     @forelse ($this->variants as $variant)
                         <button type="button" wire:key="variant-{{ $variant->id }}"
                             wire:click="addVariant({{ $variant->id }})"
-                            class="group flex min-h-[6rem] select-none flex-col items-start rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:border-primary-500 hover:shadow-md active:translate-y-0 dark:border-white/10 dark:bg-white/5">
+                            class="group flex min-h-[7rem] select-none flex-col items-start rounded-xl border border-gray-200 bg-white p-3 text-left transition hover:-translate-y-0.5 hover:border-primary-500 hover:shadow-md active:translate-y-0 dark:border-white/10 dark:bg-white/5">
                             <span class="line-clamp-2 text-sm font-medium text-gray-950 dark:text-white">{{ $variant->product->name }}</span>
                             <span class="text-xs text-gray-500 dark:text-gray-400">{{ $variant->size }}</span>
                             @if ($variant->is_returnable)
@@ -108,7 +108,7 @@
                 <div class="mb-3 flex items-center justify-between">
                     <h2 class="text-sm font-bold uppercase tracking-wide text-gray-700 dark:text-gray-200">Comanda</h2>
                     @if (filled($this->cart))
-                        <button type="button" wire:click="$set('cart', [])" class="text-gray-400 hover:text-danger-500" title="Limpar comanda">
+                        <button type="button" wire:click="$set('cart', [])" wire:confirm="Descartar a comanda inteira? Esta ação não pode ser desfeita." class="-m-2 flex h-9 w-9 items-center justify-center rounded-lg text-gray-400 transition hover:bg-danger-50 hover:text-danger-500 dark:hover:bg-danger-400/10" title="Limpar comanda">
                             <x-filament::icon icon="heroicon-o-trash" class="h-5 w-5" />
                         </button>
                     @endif
@@ -150,7 +150,10 @@
                             @endif
                         </div>
                     @empty
-                        <p class="py-6 text-center text-sm text-gray-400">Comanda vazia. Clique num produto para adicionar.</p>
+                        <div class="flex flex-col items-center gap-2 py-8 text-center">
+                            <x-filament::icon icon="heroicon-o-shopping-cart" class="h-9 w-9 text-gray-300 dark:text-gray-600" />
+                            <p class="text-sm text-gray-500 dark:text-gray-400">Comanda vazia.<br>Toque num produto para adicionar.</p>
+                        </div>
                     @endforelse
                 </div>
 
@@ -207,6 +210,12 @@
                             <span class="text-gray-500">Troco</span>
                             <span class="fa-pos-num font-semibold @if ($this->changeDue > 0) text-success-600 @endif">R$ {{ number_format($this->changeDue, 2, ',', '.') }}</span>
                         </div>
+                        @if ($this->cashTendered > 0 && $this->cashShortfall > 0)
+                            <p class="flex items-center justify-center gap-1.5 rounded-lg bg-danger-50 px-3 py-2 text-sm font-semibold text-danger-700 dark:bg-danger-400/10 dark:text-danger-400">
+                                <x-filament::icon icon="heroicon-o-exclamation-triangle" class="h-4 w-4 shrink-0" />
+                                Falta <span class="fa-pos-num">R$ {{ number_format($this->cashShortfall, 2, ',', '.') }}</span>
+                            </p>
+                        @endif
                     </div>
                 @endif
 
@@ -219,8 +228,9 @@
                     <p class="mt-2 text-sm text-danger-600">{{ $message }}</p>
                 @enderror
 
-                <x-filament::button type="button" wire:click="finalize" color="primary" size="lg" class="mt-4 w-full">
-                    Confirmar venda
+                <x-filament::button type="button" wire:click="finalize" wire:target="finalize" wire:loading.attr="disabled" color="primary" size="lg" class="mt-4 w-full">
+                    <span wire:loading.remove wire:target="finalize">Confirmar venda</span>
+                    <span wire:loading wire:target="finalize">Registrando…</span>
                 </x-filament::button>
             </div>
         </div>

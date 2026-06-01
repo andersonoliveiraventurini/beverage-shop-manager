@@ -108,7 +108,7 @@ class PointOfSale extends Page
                 fn ($c) => $c->where('slug', $this->activeCategory),
             ))
             ->when($this->search !== '', function ($q) {
-                $term = '%' . $this->search . '%';
+                $term = '%'.$this->search.'%';
                 $q->where(fn ($w) => $w
                     ->where('sku', 'like', $term)
                     ->orWhereHas('product', fn ($p) => $p
@@ -201,7 +201,7 @@ class PointOfSale extends Page
         }
 
         // Normalize to the first of the month (matches SaleForm's 'Y-m-01').
-        $this->cart[$variantId][$field] = $date ? substr($date, 0, 7) . '-01' : null;
+        $this->cart[$variantId][$field] = $date ? substr($date, 0, 7).'-01' : null;
     }
 
     public function setUnitPrice(int $variantId, float $price): void
@@ -250,6 +250,17 @@ class PointOfSale extends Page
         return round(max(0, (float) $this->cashTendered - $this->total), 2);
     }
 
+    /** Amount still missing when the customer hands over less cash than the total. */
+    #[Computed]
+    public function cashShortfall(): float
+    {
+        if ($this->payment_method !== Sale::PAYMENT_CASH) {
+            return 0.0;
+        }
+
+        return round(max(0, $this->total - (float) $this->cashTendered), 2);
+    }
+
     /* -----------------------------------------------------------------------
      | Delivery customer / address pickers
      * -------------------------------------------------------------------- */
@@ -262,7 +273,7 @@ class PointOfSale extends Page
             return collect();
         }
 
-        $term = '%' . $this->customerSearch . '%';
+        $term = '%'.$this->customerSearch.'%';
 
         return Customer::query()
             ->where(fn ($q) => $q
