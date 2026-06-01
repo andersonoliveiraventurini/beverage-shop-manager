@@ -1,46 +1,70 @@
-# FA Distribuidora — Management System
+<!-- Brand banner — palette & wave device mirror docs/DESIGN.md (single source of truth) -->
+<p align="center">
+  <img src="docs/assets/banner.svg" alt="FA Distribuidora — Sistema de Gestão · Água · Bebidas · Carvão" width="100%">
+</p>
 
-Full-stack management system for **FA Distribuidora** (Água · Bebidas · Carvão — Av. Transamazônica 1197, Jardim Garcia, Campinas-SP). Handles the product catalog with multiple variants, customer registry with per-customer delivery and building fees, cargo-driven inventory with batch expiry, sales with multiple payment methods (cash, PIX, debit, credit), a daily delivery dispatch board, an optional per-customer returnable water-gallon ledger, separated water-vs-general sales listings and a consolidated admin dashboard.
+<p align="center">
+  <a href="https://www.php.net"><img alt="PHP 8.5" src="https://img.shields.io/badge/PHP-8.5-0B3D91?style=for-the-badge&logo=php&logoColor=white"></a>
+  <a href="https://laravel.com"><img alt="Laravel 12" src="https://img.shields.io/badge/Laravel-12-0B3D91?style=for-the-badge&logo=laravel&logoColor=white"></a>
+  <a href="https://filamentphp.com"><img alt="Filament v5" src="https://img.shields.io/badge/Filament-v5-3FA9F5?style=for-the-badge&logo=laravel&logoColor=white"></a>
+  <a href="https://livewire.laravel.com"><img alt="Livewire 4" src="https://img.shields.io/badge/Livewire-4-3FA9F5?style=for-the-badge&logo=livewire&logoColor=white"></a>
+  <img alt="Pest" src="https://img.shields.io/badge/Tested%20with-Pest%203-F7C948?style=for-the-badge&logo=pest&logoColor=0E1730">
+  <img alt="Tests passing" src="https://img.shields.io/badge/tests-261%20passing-0B3D91?style=for-the-badge">
+  <img alt="Milestone M7" src="https://img.shields.io/badge/milestone-M7%20go--live-F7C948?style=for-the-badge&labelColor=0E1730">
+</p>
 
-> **Status (2026-05-19)**: code-complete MVP. Every PRD feature F01–F16 ships in code. F15/F16 await a one-time Google OAuth grant (see [`docs/RUNBOOK_GOOGLE.md`](docs/RUNBOOK_GOOGLE.md)); production cut-over awaits on-site training (see [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md)). **F18 WhatsApp Inbox** is specced as the next increment after M7 cut-over (see [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md) Track 4).
+<p align="center">
+  <strong>Água · Bebidas · Carvão</strong> &nbsp;—&nbsp; Av. Transamazônica 1197, Jardim Garcia, Campinas-SP
+</p>
 
-## Stack
+Full-stack management system for **FA Distribuidora**, a neighborhood beverage depot. It handles the product catalog with multiple variants, a customer registry with per-customer delivery and building fees, cargo-driven inventory with batch expiry, point-of-sale and sales with multiple payment methods (cash, PIX, debit, credit), a daily delivery dispatch board, an optional per-customer returnable water-gallon ledger, separated water-vs-general sales listings, and a consolidated owner dashboard.
+
+<!-- wave divider -->
+<img src="docs/assets/wave-divider.svg" alt="" width="100%">
+
+> ### 🚦 Project status — _2026-06-01_
+> **Code-complete MVP** (every PRD feature F01–F16 ships in code) now under a deliberate **code freeze**: the focus is **shipping, not building**. The only metric that matters until **M7 go-live** is `days in production`. New ideas are parked in [`docs/PARKING_LOT.md`](docs/PARKING_LOT.md), not added to `app/`. F15/F16 await a one-time Google OAuth grant ([`docs/RUNBOOK_GOOGLE.md`](docs/RUNBOOK_GOOGLE.md)); cut-over awaits on-site training ([`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md)).
+
+## 🎨 Brand identity
+
+The interface is built on a locked design system distilled from the printed brand manual. Hydrated palette, weighted typography, and a recurring **wave** device — clean, trustworthy, family-run.
+
+| Token | Name | Hex | Role |
+|---|---|---|---|
+| ![](https://img.shields.io/badge/-0B3D91?style=flat-square&color=0B3D91) | Azul Profundo | `#0B3D91` | Primary — logo, headings, primary actions |
+| ![](https://img.shields.io/badge/-3FA9F5?style=flat-square&color=3FA9F5) | Azul Cristal | `#3FA9F5` | Secondary — info & water accents |
+| ![](https://img.shields.io/badge/-F7C948?style=flat-square&color=F7C948) | Amarelo Solar | `#F7C948` | Accent — phone CTA, highlights, warnings |
+| ![](https://img.shields.io/badge/-FAFBFD?style=flat-square&color=FAFBFD) | Branco Mineral | `#FAFBFD` | Background — page & card surfaces |
+| ![](https://img.shields.io/badge/-0E1730?style=flat-square&color=0E1730) | Tinta Noite | `#0E1730` | Text — body & headings on light |
+
+Typography: **Archivo Black** for titles, big numbers and the phone CTA · **Inter** for everything practical. Full token tables, Blade components and the source-of-truth map live in [`docs/DESIGN.md`](docs/DESIGN.md).
+
+## 🧱 Stack
 
 | Layer | Technology |
 |---|---|
-| Backend | PHP 8.4 + Laravel 12 |
+| Backend | PHP 8.5 + Laravel 12 |
 | Admin panel | Filament v5 |
-| Reactivity | Livewire 3 + Tailwind CSS |
+| Reactivity | Livewire 4 + Tailwind CSS v4 |
 | Database | MySQL 8 (production) · SQLite in-memory (test) |
 | Web server | Apache 2.4 inside Docker |
-| Hosting | Oracle Cloud Always-Free Tier — Ampere A1 (ARM64) |
-| Tests | Pest 4 + Filament's `livewireTest()` helper |
+| Hosting | Oracle Cloud Always-Free — Ampere A1 (ARM64) |
+| Tests | Pest 3 + Filament's `livewireTest()` helper |
 
-UI strings are pt-BR; code, identifiers, table names and docs are English (project convention — see [`docs/DESIGN.md`](docs/DESIGN.md) §9).
+> UI strings are pt-BR; code, identifiers, table names and docs are English (project convention — see [`docs/DESIGN.md`](docs/DESIGN.md) §9).
 
-## Environments
+## 🌐 Environments
 
 | Environment | URL | Purpose |
 |---|---|---|
 | Local development | <http://localhost:8765> (Laravel Sail) | Daily development on the maintainer's machine |
-| Staging / testing | <https://fa.andersonventurini.cloud> | Live deployment on Oracle Cloud Always-Free. **Testing environment** until production go-live (milestone M7) — the same instance becomes production at cut-over |
+| Staging / testing | <https://fa.andersonventurini.cloud> | Live on Oracle Cloud Always-Free. **Testing environment** until M7 go-live — the same instance becomes production at cut-over |
 
 Both environments share the same schema and `ProductCatalogSeeder`. Operational data does not flow between them; staging may be wiped and re-seeded at any time.
 
-## Documentation
+<img src="docs/assets/wave-divider.svg" alt="" width="100%">
 
-| Document | Purpose |
-|---|---|
-| [`docs/prd/prd-fa-distribuidora.md`](docs/prd/prd-fa-distribuidora.md) | Product Requirements Document — every feature, every acceptance criterion, every milestone. Read this first |
-| [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | Phase-by-phase implementation plan with the commit map of what shipped where |
-| [`docs/DESIGN.md`](docs/DESIGN.md) | Design system distilled from the brand manual. Token tables, Blade components, source-of-truth map |
-| [`docs/RUNBOOK_GOOGLE.md`](docs/RUNBOOK_GOOGLE.md) | One-time runbook for the Google OAuth grant that unlocks F15 (Drive backup) + F16 (Contacts sync) |
-| [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md) | Deploy + go-live runbook (tag → deploy → verify → train → cut-over) |
-| [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md) | Eight-track roadmap in execution order — Push → M7 cut-over → M6 Google live → M8 WhatsApp → polish → hardening → post-MVP → doc maintenance. Read this when you sit down to work |
-| [`FA Distribuidora · Print.pdf`](FA%20Distribuidora%20%C2%B7%20Print.pdf) | Canonical visual brand manual (palette, typography, logo, mockups) |
-| [`produtos-deposito.xlsx`](produtos-deposito.xlsx) | Reference catalog spreadsheet (already transcribed into `ProductCatalogSeeder`) |
-
-## Quick start — local development
+## 🚀 Quick start — local development
 
 ```bash
 git clone https://github.com/<owner>/beverage-shop-manager.git
@@ -55,7 +79,8 @@ composer install
 
 Admin panel: <http://localhost:8765/admin>.
 
-Seed two users for sign-in:
+<details>
+<summary>👤 Seed two users for sign-in</summary>
 
 ```bash
 ./vendor/bin/sail artisan tinker --execute='
@@ -70,36 +95,58 @@ Seed two users for sign-in:
     "password" => bcrypt("password"),
 ]);'
 ```
+</details>
 
-## Running tests
+## ✅ Running tests
 
-Tests run in a self-contained Docker image with PHP 8.4 + intl (built once locally):
+Tests use SQLite `:memory:` — no database container required.
 
 ```bash
-docker build -t fa-test:php84 .docker/test  # see RUNBOOK_DEPLOY.md if the directory is missing
-docker run --rm -v "$PWD:/app" -w /app fa-test:php84 vendor/bin/pest --parallel
+./vendor/bin/sail artisan test --parallel
 ```
 
 Current snapshot:
 
 ```
-Tests: 1 skipped, 132 passed (395 assertions)
-Duration: ~57 s (parallel, 12 processes)
+Tests: 1 skipped, 261 passed (764 assertions)
 ```
 
-The single skip is a deferred Category-factory list-render test documented at `tests/Feature/Filament/CategoryResourceTest.php`.
+## 👥 Roles
 
-## Code map (high level)
+| Role | Sees | Can write |
+|---|---|---|
+| **Manager** | Everything | Catalog, customers, sales, stock, settings, depot, recompute, cargo, receipt reprint, dashboard |
+| **Attendant** | Catalog (read), customers, sales, stock (read), shell ledger (read), delivery board | Customer + Sale CRUD; no settings, no depot, no role changes |
+| **Deliverer** | Sale (view only), DeliveryBoard scoped to own + unassigned | Start route / mark completed / cancel-with-reason on own deliveries |
+
+## 📚 Documentation
+
+| Document | Purpose |
+|---|---|
+| [`docs/prd/prd-fa-distribuidora.md`](docs/prd/prd-fa-distribuidora.md) | Product Requirements Document — every feature, acceptance criterion and milestone. Read this first |
+| [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) | Phase-by-phase plan with the commit map of what shipped where |
+| [`docs/DESIGN.md`](docs/DESIGN.md) | Design system — token tables, Blade components, source-of-truth map |
+| [`docs/PARKING_LOT.md`](docs/PARKING_LOT.md) | Deferred scope. Where new ideas go during the freeze (ship, don't build) |
+| [`docs/RUNBOOK_GOOGLE.md`](docs/RUNBOOK_GOOGLE.md) | One-time Google OAuth grant that unlocks F15 (Drive backup) + F16 (Contacts sync) |
+| [`docs/RUNBOOK_DEPLOY.md`](docs/RUNBOOK_DEPLOY.md) | Deploy + go-live runbook (tag → deploy → verify → train → cut-over) |
+| [`docs/NEXT_STEPS.md`](docs/NEXT_STEPS.md) | Roadmap in execution order. Read this when you sit down to work |
+| [`FA Distribuidora · Print.pdf`](FA%20Distribuidora%20%C2%B7%20Print.pdf) | Canonical visual brand manual (palette, typography, logo, mockups) |
+
+<details>
+<summary>🗺️ Code map (high level)</summary>
 
 ```text
 app/
-  Console/Commands/RunDatabaseBackup.php       fa:backup-database — F15
-  Enums/UserRole.php                            manager / attendant / deliverer
+  Console/Commands/                            fa:backup-database, fa:restore-database — F15
+  Enums/UserRole.php                           manager / attendant / deliverer
   Filament/
-    Pages/                                     Settings, DepotConfig, DeliveryBoard, WaterSales, GeneralSales
-    Resources/                                 Categories, Products, Customers, Sales, StockMovements, Cargos, WaterShellLedgers
+    Pages/                                     PointOfSale, Settings, DepotConfig, DeliveryBoard,
+                                               WaterSales, GeneralSales, Dashboard
+    Resources/                                 Categories, Products, Customers, Sales, StockMovements,
+                                               Cargos, WaterShellLedgers
     Widgets/                                   SalesKpis, PaymentMethodBreakdown, WaterVsRestChart,
-                                               TopProductsTable, ExpiringProducts, ExpiringShells
+                                               MonthlyEvolutionChart, TopProductsTable, TopCustomersTable,
+                                               ExpiringProducts, ExpiringShells
   Models/                                      Store, User, Category, Product, ProductVariant, Customer,
                                                CustomerAddress, CustomerPhone, Sale, SaleItem,
                                                StockMovement, Cargo, CargoItem, Delivery, WaterShellLedger,
@@ -108,38 +155,33 @@ app/
                                                WaterShellLedger, Cargo, Delivery
   Services/                                    CustomerFeeCalculator, AddressGeocoder (Nominatim),
                                                GoogleDriveUploader, GoogleContactsSync
-config/brand.php                              brand string literals + chart colors (NFR-01)
-docs/                                          PRD + design system + plan + runbooks
+config/brand.php                               brand string literals + chart colors (NFR-01)
 resources/
-  css/filament/admin/theme.css                CSS variables — single source for color + font tokens
+  css/filament/admin/theme.css                 CSS variables — single source for color + font tokens
   views/
     components/fa/                             wave-divider, disk-entregas
-    filament/pages/                            settings, depot-config, delivery-board, water-sales, general-sales
+    filament/pages/                            point-of-sale, settings, depot-config, delivery-board, …
     sales/receipt.blade.php                    A5 + 80mm printable receipt
-tests/                                         87 Filament tests, 26 model tests, 9 service tests,
-                                               5 design-system tests, 5 policy tests
+docs/                                          PRD + design system + plan + runbooks + parking lot
+tests/                                         Filament feature, model, service, design-system & policy suites
 ```
+</details>
 
-## Roles
-
-| Role | Sees | Can write |
-|---|---|---|
-| **Manager** | Everything | Catalog, customers, sales, stock, settings, depot, recompute, cargo, receipt reprint, dashboard |
-| **Attendant** | Catalog (read), customers, sales, stock (read), shell ledger (read), delivery board | Customer + Sale CRUD; no settings, no depot, no role-changing |
-| **Deliverer** | Sale (view only), DeliveryBoard scoped to own + unassigned | Start route / mark completed / cancel-with-reason on own deliveries |
-
-## Brand compliance gate (NFR-01)
+## 🛡️ Brand compliance gate (NFR-01)
 
 Every PR runs `tests/Feature/DesignSystemTest.php`. Hex literals outside the allow-list (`theme.css`, `AdminPanelProvider`, brand SVGs, receipt template, the gate test itself) fail the build. Move new tokens into `theme.css` (CSS variable) or `config/brand.php` (string / chart color) — never inline.
 
-## Contributing
+## 🤝 Contributing
 
 1. Read [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md) for the phase plan and what each commit covers.
-2. Pest-first. Failing test → minimal implementation → green. Every commit must keep `vendor/bin/pest --parallel` green.
-3. Use Artisan (`make:model`, `make:filament-resource`, `make:policy`, `make:migration`, `make:command`, `make:filament-widget`, `make:filament-page`) — no hand-written boilerplate.
+2. **Pest-first.** Failing test → minimal implementation → green. Every commit keeps `./vendor/bin/sail artisan test --parallel` green.
+3. Use Artisan generators (`make:model`, `make:filament-resource`, `make:policy`, `make:migration`, `make:command`, `make:filament-widget`, `make:filament-page`) — no hand-written boilerplate.
 4. Conventional commit messages. No "Claude as co-author" tag.
-5. Brand-compliance gate must stay green.
+5. During the freeze, commits touching `app/` must be tagged `[M7]` or `[hotfix]` (enforced by a `commit-msg` hook). Everything else goes to the [parking lot](docs/PARKING_LOT.md).
+6. The brand-compliance gate must stay green.
 
-## License
+<img src="docs/assets/wave-divider.svg" alt="" width="100%">
 
-Internal project — not licensed for redistribution.
+<p align="center">
+  <sub><strong>FA Distribuidora</strong> · Internal project — not licensed for redistribution · <em>Água · Bebidas · Carvão</em></sub>
+</p>

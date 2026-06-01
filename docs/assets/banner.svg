@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1280 360" role="img" aria-label="FA Distribuidora — Sistema de Gestão · Água · Bebidas · Carvão">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0B3D91"/>
+      <stop offset="1" stop-color="#0E1730"/>
+    </linearGradient>
+    <radialGradient id="glowYellow" cx="0.85" cy="0.18" r="0.6">
+      <stop offset="0" stop-color="#F7C948" stop-opacity="0.28"/>
+      <stop offset="1" stop-color="#F7C948" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="glowCyan" cx="0.08" cy="0.92" r="0.7">
+      <stop offset="0" stop-color="#3FA9F5" stop-opacity="0.32"/>
+      <stop offset="1" stop-color="#3FA9F5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="1280" height="360" fill="url(#bg)"/>
+  <rect width="1280" height="360" fill="url(#glowYellow)"/>
+  <rect width="1280" height="360" fill="url(#glowCyan)"/>
+
+  <!-- Brand mark: mineral-white circle, deep-blue stroke, solar-yellow droplet over the FA monogram -->
+  <g transform="translate(110 108)">
+    <circle cx="72" cy="72" r="72" fill="#FAFBFD"/>
+    <circle cx="72" cy="72" r="72" fill="none" stroke="#0B3D91" stroke-width="6"/>
+    <path d="M72 20 C 85 40, 96 51, 96 64 a24 24 0 1 1 -48 0 c0 -13, 11 -24, 24 -44 z" fill="#F7C948"/>
+    <text x="72" y="99" text-anchor="middle" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="64" fill="#0B3D91">FA</text>
+  </g>
+
+  <!-- Wordmark + sub-brand + tagline -->
+  <text x="296" y="152" font-family="'Arial Black', Arial, sans-serif" font-weight="900" font-size="76" fill="#FFFFFF" letter-spacing="1">FA DISTRIBUIDORA</text>
+  <text x="300" y="198" font-family="Arial, sans-serif" font-weight="700" font-size="26" fill="#F7C948" letter-spacing="6">SISTEMA DE GESTÃO</text>
+  <text x="302" y="240" font-family="Arial, sans-serif" font-weight="700" font-size="18" fill="#9DC3F0" letter-spacing="7">ÁGUA · BEBIDAS · CARVÃO</text>
+
+  <!-- Signature wave device -->
+  <path d="M0 298 C 210 268, 380 330, 660 298 S 1090 268, 1280 298 L1280 360 L0 360 Z" fill="#3FA9F5" opacity="0.22"/>
+  <path d="M0 322 C 230 296, 440 352, 740 322 S 1110 300, 1280 322 L1280 360 L0 360 Z" fill="#3FA9F5" opacity="0.42"/>
+</svg>
