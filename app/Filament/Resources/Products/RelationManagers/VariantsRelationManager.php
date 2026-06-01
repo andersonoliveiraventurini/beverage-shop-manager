@@ -13,8 +13,8 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Text;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -63,7 +63,8 @@ class VariantsRelationManager extends RelationManager
                             ->step('0.01')
                             ->minValue(0)
                             ->live(onBlur: true)
-                            ->required(),
+                            ->required()
+                            ->helperText('Preço final cobrado do cliente.'),
 
                         TextInput::make('cost_price')
                             ->label('Preço de custo')
@@ -72,7 +73,8 @@ class VariantsRelationManager extends RelationManager
                             ->step('0.01')
                             ->minValue(0)
                             ->live(onBlur: true)
-                            ->placeholder('≈ 65% do preço de venda'),
+                            ->placeholder('≈ 65% do preço de venda')
+                            ->helperText('Quanto você paga ao fornecedor. Usado para calcular a margem.'),
 
                         TextInput::make('min_stock')
                             ->label('Estoque mínimo')
@@ -141,7 +143,7 @@ class VariantsRelationManager extends RelationManager
                     ->alignCenter()
                     ->color(fn ($state, $record) => $record->isLowStock() ? 'danger' : 'success')
                     ->weight(fn ($state, $record) => $record->isLowStock() ? 'bold' : null)
-                    ->tooltip(fn ($record) => 'Mínimo: ' . $record->min_stock),
+                    ->tooltip(fn ($record) => 'Mínimo: '.$record->min_stock),
 
                 TextColumn::make('sale_price')
                     ->label('Venda')

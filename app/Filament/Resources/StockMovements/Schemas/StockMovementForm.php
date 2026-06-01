@@ -28,7 +28,7 @@ class StockMovementForm
                                 ->with('product:id,name')
                                 ->orderBy('sku')
                                 ->get()
-                                ->mapWithKeys(fn ($v) => [$v->id => $v->sku . ' — ' . optional($v->product)->name . ' (' . $v->size . ')']))
+                                ->mapWithKeys(fn ($v) => [$v->id => $v->sku.' — '.optional($v->product)->name.' ('.$v->size.')']))
                             ->searchable()
                             ->required()
                             ->columnSpan(2),
@@ -40,7 +40,8 @@ class StockMovementForm
                                 StockMovement::DIRECTION_OUT => 'Saída (−)',
                             ])
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->helperText('Entrada adiciona ao estoque; Saída remove.'),
 
                         Select::make('reason')
                             ->label('Motivo')
@@ -51,7 +52,8 @@ class StockMovementForm
                             ])
                             ->default(StockMovement::REASON_MANUAL_ADJUST)
                             ->required()
-                            ->native(false),
+                            ->native(false)
+                            ->helperText('Ajuste manual: contagem ou perda. Carga: entrada de fornecedor. Baixa: produto vencido.'),
 
                         TextInput::make('quantity')
                             ->label('Quantidade')

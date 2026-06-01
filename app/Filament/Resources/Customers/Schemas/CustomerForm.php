@@ -49,7 +49,8 @@ class CustomerForm
                             ->label('Distância (km)')
                             ->numeric()
                             ->step('0.01')
-                            ->suffix('km'),
+                            ->suffix('km')
+                            ->helperText('Distância até o cliente. Usada no recálculo automático das taxas.'),
 
                         Toggle::make('has_manual_fee_override')
                             ->label('Taxas manuais (sem recálculo)')

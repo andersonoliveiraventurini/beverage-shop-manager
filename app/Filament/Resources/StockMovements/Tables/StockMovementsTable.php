@@ -41,7 +41,7 @@ class StockMovementsTable
                     ->label('Qtd')
                     ->numeric()
                     ->alignEnd()
-                    ->formatStateUsing(fn ($state, $record) => ($record->direction === 'in' ? '+' : '−') . $state),
+                    ->formatStateUsing(fn ($state, $record) => ($record->direction === 'in' ? '+' : '−').$state),
 
                 TextColumn::make('reason')
                     ->label('Motivo')
@@ -64,7 +64,11 @@ class StockMovementsTable
                 TextColumn::make('source_id')
                     ->label('Origem')
                     ->formatStateUsing(fn ($state, $record) => $record->source_type
-                        ? sprintf('%s #%s', class_basename($record->source_type), $state)
+                        ? sprintf('%s #%s', match (class_basename($record->source_type)) {
+                            'Sale' => 'Venda',
+                            'Cargo' => 'Carga',
+                            default => class_basename($record->source_type),
+                        }, $state)
                         : '—')
                     ->toggleable(),
 
@@ -85,6 +89,9 @@ class StockMovementsTable
                         'write_off' => 'Baixa por vencimento',
                     ]),
             ])
+            ->emptyStateHeading('Nenhuma movimentação de estoque')
+            ->emptyStateDescription('Vendas geram movimentações automáticas. Use "Criar" para um ajuste manual.')
+            ->emptyStateIcon('heroicon-o-arrows-up-down')
             ->recordActions([])
             ->toolbarActions([]);
     }

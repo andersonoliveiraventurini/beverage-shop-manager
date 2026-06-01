@@ -36,13 +36,16 @@ class CargosTable
                     ->label('Total')
                     ->money('BRL')
                     ->alignEnd()
-                    ->weight('semibold'),
+                    ->weight('bold'),
 
                 TextColumn::make('user.name')
                     ->label('Recebido por')
                     ->placeholder('—')
                     ->toggleable(),
             ])
+            ->emptyStateHeading('Nenhuma carga registrada')
+            ->emptyStateDescription('Clique em "Criar" para registrar uma entrada de fornecedor.')
+            ->emptyStateIcon('heroicon-o-truck')
             ->recordActions([
                 ViewAction::make(),
             ])

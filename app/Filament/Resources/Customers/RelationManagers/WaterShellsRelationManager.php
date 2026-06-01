@@ -10,6 +10,7 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 
 class WaterShellsRelationManager extends RelationManager
 {
@@ -21,7 +22,7 @@ class WaterShellsRelationManager extends RelationManager
 
     protected static ?string $pluralModelLabel = 'Cascos';
 
-    public static function canViewForRecord(\Illuminate\Database\Eloquent\Model $ownerRecord, string $pageClass): bool
+    public static function canViewForRecord(Model $ownerRecord, string $pageClass): bool
     {
         return DeliverySetting::trackingShells();
     }
@@ -74,6 +75,9 @@ class WaterShellsRelationManager extends RelationManager
                     ->label('Apenas vencidos')
                     ->query(fn ($query) => $query->whereDate('expires_at', '<', now())),
             ])
+            ->emptyStateHeading('Nenhum casco em circulação')
+            ->emptyStateDescription('Os cascos aparecem aqui quando você registra vendas de produtos retornáveis para este cliente.')
+            ->emptyStateIcon('heroicon-o-cube')
             ->headerActions([])
             ->recordActions([])
             ->toolbarActions([]);
