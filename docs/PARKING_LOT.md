@@ -20,3 +20,14 @@
 | Post-MVP P1 (Track 7) | NEXT_STEPS Track 7 | F17 forecasting (needs 60 days data), supplier registry, PWA deliverer, thermal driver |
 
 _Add new ideas below this line as one-liners. Do not build them — park them._
+
+### Deferred UI cosmetics (from the 2026-06-01 M7-UX audit)
+> The high-leverage, error-reducing fixes from that audit shipped under `[M7]` (PDV loading/confirm/insufficient-cash, cadastro helper texts + empty states, dashboard briefing order). These remaining items are purely cosmetic — revisit only after real production usage proves they matter.
+- Product thumbnails / image column in the catalog and Top-Products widget (recognition aid).
+- `CargoInfolist` structured view page for received cargo (supplier, date, items summary).
+- Add `in_delivery_area` badge to the Customer infolist.
+- MonthlyEvolutionChart: BRL-formatted Y-axis tick callback (`R$ Xk`).
+- Make Expiring-Products/Shells widgets honor the dashboard date filter (currently always "from today").
+- Healthy-inventory empty state (single "Inventário saudável ✓" stat when all expiry counts are zero).
+- Geolocation/lat-lng fieldset grouping + helper text on customer addresses.
+- Categories table column reorder (product count before slug; slug toggleable).
