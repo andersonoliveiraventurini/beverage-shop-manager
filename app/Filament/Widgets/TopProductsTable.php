@@ -29,12 +29,18 @@ class TopProductsTable extends TableWidget
         return $table
             ->query(fn (): Builder => $this->buildQuery())
             ->paginated(false)
+            ->emptyStateHeading('Nenhuma venda no período')
+            ->emptyStateDescription('Ajuste o filtro de datas acima para ver os produtos mais vendidos.')
             ->columns([
-                TextColumn::make('sku'),
                 TextColumn::make('product_name')
-                    ->label('Produto'),
+                    ->label('Produto')
+                    ->weight('semibold'),
                 TextColumn::make('size')
                     ->label('Variação'),
+                TextColumn::make('sku')
+                    ->label('SKU')
+                    ->fontFamily('mono')
+                    ->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('units_sold')
                     ->label('Unid.')
                     ->numeric()
@@ -42,6 +48,7 @@ class TopProductsTable extends TableWidget
                 TextColumn::make('revenue')
                     ->label('Receita')
                     ->money('BRL')
+                    ->weight('bold')
                     ->alignEnd(),
             ]);
     }

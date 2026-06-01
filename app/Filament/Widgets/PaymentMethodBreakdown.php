@@ -22,6 +22,12 @@ class PaymentMethodBreakdown extends StatsOverviewWidget
         return optional(auth()->user())->isManager() ?? false;
     }
 
+    /** Two columns so each method (Dinheiro/PIX, Débito/Crédito) reads clearly in pairs. */
+    protected function getColumns(): int
+    {
+        return 2;
+    }
+
     protected function getStats(): array
     {
         [$start, $end] = $this->resolvePeriod();

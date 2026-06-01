@@ -29,9 +29,12 @@ class TopCustomersTable extends TableWidget
         return $table
             ->query(fn (): Builder => $this->buildQuery())
             ->paginated(false)
+            ->emptyStateHeading('Nenhuma venda no período')
+            ->emptyStateDescription('Ajuste o filtro de datas acima para ver os clientes que mais compraram.')
             ->columns([
                 TextColumn::make('customer_name')
-                    ->label('Cliente'),
+                    ->label('Cliente')
+                    ->weight('semibold'),
                 TextColumn::make('sales_count')
                     ->label('Vendas')
                     ->numeric()
@@ -39,6 +42,7 @@ class TopCustomersTable extends TableWidget
                 TextColumn::make('total_spent')
                     ->label('Total gasto')
                     ->money('BRL')
+                    ->weight('bold')
                     ->alignEnd(),
             ]);
     }
