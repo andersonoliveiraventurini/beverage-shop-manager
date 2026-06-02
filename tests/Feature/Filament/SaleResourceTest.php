@@ -222,3 +222,104 @@ it('enables delivery_fee and building_fee for a manager on the edit form', funct
         ->assertFormFieldIsEnabled('delivery_fee')
         ->assertFormFieldIsEnabled('building_fee');
 });
+
+/* ---- Hotfix: money clamps + non-manager re-derivation on the sale form ---- */
+
+it('rejects a negative discount on the sale form', function () {
+    $this->actingAs(User::factory()->manager()->create());
+
+    livewireTest(CreateSale::class)
+        ->fillForm([
+            'type' => 'counter',
+            'payment_method' => 'cash',
+            'status' => 'open',
+            'items' => [[
+                'variant_id' => $this->variant->id,
+                'quantity' => 1,
+                'unit_price' => 15.00,
+                'modality' => SaleItem::MODALITY_FULL,
+                'delivered_shell_expires_at' => '2030-03-01',
+            ]],
+            'discount' => -5,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['discount']);
+});
+
+it('rejects a discount larger than the items subtotal', function () {
+    $this->actingAs(User::factory()->manager()->create());
+
+    livewireTest(CreateSale::class)
+        ->fillForm([
+            'type' => 'counter',
+            'payment_method' => 'cash',
+            'status' => 'open',
+            'items' => [[
+                'variant_id' => $this->variant->id,
+                'quantity' => 1,
+                'unit_price' => 15.00,           // subtotal 15.00
+                'modality' => SaleItem::MODALITY_FULL,
+                'delivered_shell_expires_at' => '2030-03-01',
+            ]],
+            'discount' => 50,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['discount']);
+});
+
+it('re-derives a tampered unit_price from the catalog for an attendant on create', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+
+    livewireTest(CreateSale::class)
+        ->fillForm([
+            'type' => 'counter',
+            'payment_method' => 'cash',
+            'status' => 'confirmed',
+            'items' => [[
+                'variant_id' => $this->variant->id,
+                'quantity' => 1,
+                'unit_price' => 0.01,            // tampered (field is disabled for attendants)
+                'modality' => SaleItem::MODALITY_FULL,
+                'delivered_shell_expires_at' => '2030-03-01',
+            ]],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $item = Sale::query()->latest('id')->first()->items->first();
+    expect((float) $item->unit_price)->toBe(15.00); // catalog price, not 0.01
+});
+
+it('re-derives tampered delivery and building fees from the customer for an attendant on create', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+
+    $customer = Customer::factory()->create([
+        'delivery_fee' => 5.00, 'building_fee' => 2.00, 'has_manual_fee_override' => true,
+    ]);
+    $customer->addresses()->create([
+        'street' => 'Rua X', 'district' => 'JG', 'city' => 'Campinas', 'is_primary' => true,
+    ]);
+
+    livewireTest(CreateSale::class)
+        ->fillForm([
+            'customer_id' => $customer->id,
+            'type' => 'delivery',
+            'payment_method' => 'pix',
+            'status' => 'open',
+            'delivery_fee' => 999,               // tampered (disabled for attendants)
+            'building_fee' => 999,
+            'items' => [[
+                'variant_id' => $this->variant->id,
+                'quantity' => 1,
+                'unit_price' => 15.00,
+                'modality' => SaleItem::MODALITY_FULL,
+                'delivered_shell_expires_at' => '2030-03-01',
+            ]],
+        ])
+        ->call('create')
+        ->assertHasNoFormErrors();
+
+    $sale = Sale::query()->latest('id')->first();
+    expect((float) $sale->delivery_fee)->toBe(5.00)
+        ->and((float) $sale->building_fee)->toBe(2.00);
+});

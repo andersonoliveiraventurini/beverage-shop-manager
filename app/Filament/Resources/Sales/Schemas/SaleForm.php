@@ -198,6 +198,11 @@ class SaleForm
                                         ], true))
                                     ->columnSpan(6),
                             ])
+                            // unit_price is disabled (display-only) for non-managers but still
+                            // dehydrated, so a crafted payload could set it. Re-derive it from
+                            // the catalog server-side for non-managers on every item write.
+                            ->mutateRelationshipDataBeforeCreateUsing(fn (array $data): array => self::rederiveItemPrice($data))
+                            ->mutateRelationshipDataBeforeSaveUsing(fn (array $data): array => self::rederiveItemPrice($data))
                             ->addActionLabel('Adicionar item'),
                     ]),
 
@@ -221,6 +226,7 @@ class SaleForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->default(0)
                             ->visible(fn (Get $get) => in_array($get('payment_method'), ['debit', 'credit'], true)),
 
@@ -240,6 +246,7 @@ class SaleForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->default(0)
                             ->disabled(fn () => ! optional(auth()->user())->isManager())
                             ->dehydrated()
@@ -253,6 +260,7 @@ class SaleForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->default(0)
                             ->disabled(fn () => ! optional(auth()->user())->isManager())
                             ->dehydrated()
@@ -266,6 +274,7 @@ class SaleForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->helperText('Editável apenas para clientes fora da área.')
                             ->visible(fn (Get $get) => $get('type') === 'delivery'
                                 && self::customerIsOutOfArea($get('customer_id')))
@@ -276,7 +285,10 @@ class SaleForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
+                            ->maxValue(fn (Get $get): float => self::itemsSubtotal($get('items')))
                             ->default(0)
+                            ->helperText('Não pode ser negativo nem maior que o subtotal dos itens.')
                             ->live(),
 
                         TextInput::make('discount_reason')
@@ -313,6 +325,44 @@ class SaleForm
             ->value('in_delivery_area');
 
         return $inArea === false || $inArea === 0;
+    }
+
+    /**
+     * Re-derive a sale item's unit price from the catalog for non-managers.
+     * Managers may keep their override. Runs server-side on every item write so
+     * a disabled-but-dehydrated unit_price cannot be tampered via the payload.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    private static function rederiveItemPrice(array $data): array
+    {
+        if (optional(auth()->user())->isManager()) {
+            return $data;
+        }
+
+        $variantId = $data['variant_id'] ?? null;
+        if ($variantId) {
+            $price = ProductVariant::query()->whereKey($variantId)->value('sale_price');
+            if ($price !== null) {
+                $data['unit_price'] = (float) $price;
+            }
+        }
+
+        return $data;
+    }
+
+    /**
+     * Sum of unit_price × quantity across the repeater's current item state —
+     * used as the upper bound for the discount field.
+     *
+     * @param  array<int, array<string, mixed>>|null  $items
+     */
+    private static function itemsSubtotal(?array $items): float
+    {
+        return round(collect($items ?? [])->sum(
+            fn (array $item): float => (float) ($item['unit_price'] ?? 0) * (int) ($item['quantity'] ?? 0),
+        ), 2);
     }
 
     private static function isReturnable(?int $variantId): bool

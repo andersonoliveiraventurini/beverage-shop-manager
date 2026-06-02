@@ -75,8 +75,8 @@ class DepotConfig extends Page
                         TextInput::make('city')->label('Cidade')->required(),
                         TextInput::make('state')->label('UF')->maxLength(2)->required(),
                         TextInput::make('zip')->label('CEP'),
-                        TextInput::make('lat')->label('Latitude')->numeric()->step('0.0000001'),
-                        TextInput::make('lng')->label('Longitude')->numeric()->step('0.0000001'),
+                        TextInput::make('lat')->label('Latitude')->numeric()->step('0.0000001')->minValue(-90)->maxValue(90),
+                        TextInput::make('lng')->label('Longitude')->numeric()->step('0.0000001')->minValue(-180)->maxValue(180),
                     ]),
 
                 Section::make('Contato')

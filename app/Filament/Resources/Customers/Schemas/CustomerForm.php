@@ -49,6 +49,7 @@ class CustomerForm
                             ->label('Distância (km)')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->suffix('km')
                             ->helperText('Distância até o cliente. Usada no recálculo automático das taxas.'),
 
@@ -62,6 +63,7 @@ class CustomerForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->default(0)
                             ->required(),
 
@@ -70,6 +72,7 @@ class CustomerForm
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->default(0)
                             ->required(),
 

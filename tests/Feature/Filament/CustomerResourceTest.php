@@ -41,6 +41,17 @@ it('creates a customer through the Filament form', function () {
         ->in_delivery_area->toBeTrue();
 });
 
+it('rejects negative delivery and building fees on the customer form', function () {
+    livewireTest(CreateCustomer::class)
+        ->fillForm([
+            'name' => 'Cliente Inválido',
+            'delivery_fee' => -1,
+            'building_fee' => -2,
+        ])
+        ->call('create')
+        ->assertHasFormErrors(['delivery_fee', 'building_fee']);
+});
+
 it('renders the Sales (purchase-history) relation manager', function () {
     $customer = Customer::factory()->create();
 

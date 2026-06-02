@@ -68,6 +68,7 @@ class Settings extends Page
                             ->label('Raio de entrega (km)')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->suffix('km')
                             ->required(),
 
@@ -76,6 +77,7 @@ class Settings extends Page
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->required(),
 
                         TextInput::make('out_of_area_extra_fee')
@@ -83,6 +85,7 @@ class Settings extends Page
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->helperText('Somado à taxa padrão quando o cliente está fora do raio.')
                             ->required(),
 
@@ -91,6 +94,7 @@ class Settings extends Page
                             ->prefix('R$')
                             ->numeric()
                             ->step('0.01')
+                            ->minValue(0)
                             ->required(),
                     ]),
 
