@@ -31,19 +31,21 @@ it('round-trips the database: backup then restore recovers deleted and mutated r
         ->and($run->status)->toBe(BackupRun::STATUS_SUCCESS);
 
     // dumpDatabase() writes a fa-YYYY-MM-DD-His.sql into storage/app/backups.
-    // We grab the newest one (RefreshDatabase keeps each test isolated).
+    // Parallel workers share that directory and the filename is only second-
+    // granular, so "newest by mtime" can resolve to another worker's dump.
+    // 'Alice Backup' is unique to this test, so select the dump by that marker
+    // (newest match, to skip any leftover dump from a previous run).
     $backupDir = storage_path('app/backups');
-    $dumpFiles = glob($backupDir.'/fa-*.sql');
-    expect($dumpFiles)->not->toBeEmpty('No .sql dump file found in '.$backupDir);
-    usort($dumpFiles, fn ($a, $b) => filemtime($b) - filemtime($a));
-    $dumpPath = $dumpFiles[0];
+    $dumpPath = collect(glob($backupDir.'/fa-*.sql'))
+        ->filter(fn (string $file): bool => str_contains((string) file_get_contents($file), 'Alice Backup'))
+        ->sortByDesc(fn (string $file): int => filemtime($file))
+        ->first();
 
-    expect(file_exists($dumpPath))->toBeTrue();
+    expect($dumpPath)->not->toBeNull('No backup dump containing the seeded rows was found in '.$backupDir);
 
     // Sanity: dump must contain real INSERT data — not just comments.
     $dumpContents = file_get_contents($dumpPath);
     expect($dumpContents)
-        ->toContain('Alice Backup')
         ->toContain('Bob Backup')
         ->toContain('INSERT INTO');
 
