@@ -201,7 +201,10 @@ class PointOfSale extends Page
         }
 
         // Normalize to the first of the month (matches SaleForm's 'Y-m-01').
-        $this->cart[$variantId][$field] = $date ? substr($date, 0, 7).'-01' : null;
+        // Accept only a YYYY-MM prefix; anything else clears the field.
+        $this->cart[$variantId][$field] = ($date && preg_match('/^\d{4}-\d{2}/', $date) === 1)
+            ? substr($date, 0, 7).'-01'
+            : null;
     }
 
     public function setUnitPrice(int $variantId, float $price): void
@@ -381,7 +384,23 @@ class PointOfSale extends Page
         // everyone else we re-derive it from the catalog at finalize time.
         $isManager = (bool) optional(auth()->user())->isManager();
 
-        DB::transaction(function () use ($isManager): void {
+        // Fees and discount are public (client-writable) properties too. Trust
+        // them only after re-deriving/clamping: a non-manager always gets the
+        // customer's stored fees; both fees are floored at 0; and the discount
+        // is clamped to [0, subtotal] so it can never overcharge or zero a sale.
+        if ($this->type === Sale::TYPE_DELIVERY && ! $isManager && $this->customer_id) {
+            $customer = Customer::find($this->customer_id);
+            if ($customer) {
+                $this->delivery_fee = (float) $customer->delivery_fee;
+                $this->building_fee = (float) $customer->building_fee;
+            }
+        }
+
+        $deliveryFee = $this->type === Sale::TYPE_DELIVERY ? max(0.0, (float) $this->delivery_fee) : 0.0;
+        $buildingFee = $this->type === Sale::TYPE_DELIVERY ? max(0.0, (float) $this->building_fee) : 0.0;
+        $discount = max(0.0, min($this->subtotal, (float) $this->discount));
+
+        DB::transaction(function () use ($isManager, $deliveryFee, $buildingFee, $discount): void {
             $sale = Sale::create([
                 'customer_id' => $this->type === 'delivery' ? $this->customer_id : null,
                 'address_id' => $this->type === 'delivery' ? $this->address_id : null,
@@ -389,10 +408,10 @@ class PointOfSale extends Page
                 'type' => $this->type,
                 'payment_method' => $this->payment_method,
                 'status' => Sale::STATUS_CONFIRMED,
-                'delivery_fee' => $this->type === 'delivery' ? (float) $this->delivery_fee : 0,
-                'building_fee' => $this->type === 'delivery' ? (float) $this->building_fee : 0,
-                'discount' => (float) $this->discount,
-                'discount_reason' => (float) $this->discount > 0 ? $this->discount_reason : null,
+                'delivery_fee' => $deliveryFee,
+                'building_fee' => $buildingFee,
+                'discount' => $discount,
+                'discount_reason' => $discount > 0 ? $this->discount_reason : null,
                 'paid_at' => now(),
             ]);
 
@@ -430,7 +449,21 @@ class PointOfSale extends Page
             throw ValidationException::withMessages(['cart' => 'Adicione ao menos um item à comanda.']);
         }
 
+        // payment_method is a public (client-writable) property — re-check the
+        // allow-list at submit time, not only inside setPaymentMethod().
+        if (! in_array($this->payment_method, Sale::PAYMENT_METHODS, true)) {
+            throw ValidationException::withMessages(['cart' => 'Forma de pagamento inválida.']);
+        }
+
         foreach ($this->cart as $entry) {
+            // Quantity is client-writable; the UI mutators guard their own path,
+            // but a crafted payload can set anything. Reject < 1 / non-integer.
+            if ((int) $entry['quantity'] < 1) {
+                throw ValidationException::withMessages([
+                    'cart' => "Quantidade inválida para {$entry['name']} ({$entry['size']}).",
+                ]);
+            }
+
             if (! $entry['is_returnable']) {
                 continue;
             }
@@ -449,10 +482,33 @@ class PointOfSale extends Page
                     'cart' => "Informe a validade do casco recebido para {$entry['name']} ({$entry['size']}).",
                 ]);
             }
+
+            // Shell validity dates are client-writable — reject malformed values
+            // before they reach the `date` columns (would otherwise raise a 500).
+            foreach (['delivered_shell_expires_at', 'returned_shell_expires_at'] as $dateField) {
+                $value = $entry[$dateField] ?? null;
+                if ($value !== null && ! $this->isValidIsoDate((string) $value)) {
+                    throw ValidationException::withMessages([
+                        'cart' => "Validade do casco inválida para {$entry['name']} ({$entry['size']}).",
+                    ]);
+                }
+            }
         }
 
         if ($this->type === 'delivery' && (! $this->customer_id || ! $this->address_id)) {
             throw ValidationException::withMessages(['cart' => 'Entregas exigem cliente e endereço.']);
         }
+    }
+
+    /** True when $value is a real calendar date in strict Y-m-d form. */
+    private function isValidIsoDate(string $value): bool
+    {
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) !== 1) {
+            return false;
+        }
+
+        [$year, $month, $day] = array_map('intval', explode('-', $value));
+
+        return checkdate($month, $day, $year);
     }
 }

@@ -374,6 +374,89 @@ it('computes the cash shortfall only when paying cash and tendered is below the 
     expect((float) $page->instance()->cashShortfall)->toBe(0.0);
 });
 
+/* ---- Hotfix: finalize hardening against tampered public properties ---- */
+
+it('clamps a tampered negative discount to zero on finalize', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+
+    livewireTest(PointOfSale::class)
+        ->call('addVariant', $v['soda']->id)   // subtotal 13.00
+        ->set('discount', -50)                 // crafted: a negative discount would overcharge
+        ->call('finalize')
+        ->assertHasNoErrors();
+
+    $sale = Sale::query()->latest('id')->first();
+    expect((float) $sale->discount)->toBe(0.0)
+        ->and((float) $sale->total)->toBe(13.00);
+});
+
+it('clamps a discount larger than the subtotal down to the subtotal on finalize', function () {
+    $this->actingAs(User::factory()->manager()->create());
+    $v = seedCatalog();
+
+    livewireTest(PointOfSale::class)
+        ->call('addVariant', $v['soda']->id)   // subtotal 13.00
+        ->set('discount', 99999)
+        ->call('finalize')
+        ->assertHasNoErrors();
+
+    $sale = Sale::query()->latest('id')->first();
+    expect((float) $sale->discount)->toBe(13.00)
+        ->and((float) $sale->total)->toBe(0.0);
+});
+
+it('rejects a tampered cart quantity below 1 on finalize', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+
+    $page = livewireTest(PointOfSale::class)->call('addVariant', $v['soda']->id);
+    $cart = $page->get('cart');
+    $cart[$v['soda']->id]['quantity'] = 0;     // crafted payload
+    $page->set('cart', $cart)->call('finalize')->assertHasErrors('cart');
+
+    expect(Sale::count())->toBe(0);
+});
+
+it('rejects a tampered payment_method outside the allow-list on finalize', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+
+    livewireTest(PointOfSale::class)
+        ->call('addVariant', $v['soda']->id)
+        ->set('payment_method', 'boleto')      // crafted: bypasses the setPaymentMethod() guard
+        ->call('finalize')
+        ->assertHasErrors('cart');
+
+    expect(Sale::count())->toBe(0);
+});
+
+it('re-derives delivery and building fees from the customer for a non-manager on finalize', function () {
+    $this->actingAs(User::factory()->attendant()->create());
+    $v = seedCatalog();
+    // has_manual_fee_override locks the stored fees (otherwise the model recomputes
+    // them from DeliverySetting defaults, as the other delivery tests rely on).
+    $customer = Customer::factory()->create([
+        'delivery_fee' => 4.00, 'building_fee' => 1.50, 'has_manual_fee_override' => true,
+    ]);
+    $customer->addresses()->create([
+        'street' => 'Rua A', 'district' => 'JG', 'city' => 'Campinas', 'is_primary' => true,
+    ]);
+
+    livewireTest(PointOfSale::class)
+        ->call('setType', 'delivery')
+        ->call('selectCustomer', $customer->id)
+        ->call('addVariant', $v['soda']->id)
+        ->set('delivery_fee', 999)             // crafted: inflated fees ignored for non-managers
+        ->set('building_fee', 999)
+        ->call('finalize')
+        ->assertHasNoErrors();
+
+    $sale = Sale::query()->latest('id')->first();
+    expect((float) $sale->delivery_fee)->toBe(4.00)
+        ->and((float) $sale->building_fee)->toBe(1.50);
+});
+
 /* ---- Follow-up: Enter shortcut (addFirstMatch) ---- */
 
 it('adds the only catalog match via addFirstMatch and ignores ambiguous searches', function () {
