@@ -1,10 +1,10 @@
 # Next Steps — FA Distribuidora
 
-> **Snapshot date**: 2026-05-29
+> **Snapshot date**: 2026-06-01
 > ## 🎯 THE ONLY METRIC THAT MATTERS: `days in production = 0`
 > Not test count, not closed criteria. The family business is still 100% on paper. **Code is frozen until M7 go-live** (a `commit-msg` git hook rejects `app/` commits not tagged `[M7]`/`[hotfix]`; park ideas in [`docs/PARKING_LOT.md`](PARKING_LOT.md)).
 >
-> **State**: MVP F01–F16 + F19 PDV + F20 storefront + the **Polish P1 front (Track 5, 5.1–5.9)** all ship in code and are on `origin/main`. **260 Pest tests green (1 skipped)**. The DEC-002 backup-gate code is closed: a real **restorable** logical dump, the **`fa:restore-database`** command with a **proven round-trip test**, and **production fails loud** when no off-host copy leaves the host. F18 WhatsApp Inbox stays parked (Phase H).
+> **State**: MVP F01–F16 + F19 PDV + F20 storefront + the **Polish P1 front (Track 5, 5.1–5.9)** all ship in code and are on `origin/main`. **261 Pest tests green (1 skipped)**. A presentation-only **M7 go-live UX clarity pass** also shipped (PDV anti-duplicate-sale + cadastro helper texts + dashboard briefing order; `[M7]`-tagged, no domain logic touched — see IMPLEMENTATION_PLAN change log 2.3.0; deferred cosmetics in [`PARKING_LOT.md`](PARKING_LOT.md)). The DEC-002 backup-gate code is closed: a real **restorable** logical dump, the **`fa:restore-database`** command with a **proven round-trip test**, and **production fails loud** when no off-host copy leaves the host. F18 WhatsApp Inbox stays parked (Phase H).
 >
 > **Board of Advisors — DEC-001 (2026-05-23) AND DEC-002 (2026-05-29): _ship beats build_ (reaffirmed, VERY HIGH).** DEC-001 said stop building and ship; in the 6 days after, three more code fronts were built instead. DEC-002 (unanimous) ruled the codebase healthy but the *project failing* (0% of goal), named the build-avoidance pattern, and prescribed: **(0)** push + protect work ✅ done · **(1)** structural freeze (commit-guard + parking-lot) ✅ done · **(2)** close the backup gate *for real* — code done ✅; the **host steps remain** (install `google/apiclient`, OAuth grant, real `mysqldump`, verify file in Drive, **prove a restore**, monitoring) · **(3)** M7 cut-over · **(4)** ~30 days real usage *then* reassess F18/hardening/polish. **No new scope until the family is off paper.**
 
