@@ -1,7 +1,7 @@
 # Runbook — Deploy + Go-Live (Phase G)
 
 > **Owner**: Anderson de Oliveira Venturini
-> **Last updated**: 2026-05-23
+> **Last updated**: 2026-07-07
 > **Target host**: Oracle Cloud Always-Free Tier (Ampere A1, ARM64) at <https://fa.andersonventurini.cloud>
 > **Status**: Staging is live and acts as the testing environment. M7 go-live promotes the same machine to production.
 
@@ -121,14 +121,34 @@ Hand the manager a printed cheat sheet covering 1–6.
    docker compose exec app php artisan migrate:fresh --force --seed
    ```
 2. Run `ProductCatalogSeeder` (idempotent — included in the seed step).
-3. Manager creates the FA Distribuidora user accounts via `php artisan tinker`:
-   ```php
-   App\Models\User::factory()->manager()->create(['name' => '...', 'email' => '...']);
-   App\Models\User::factory()->attendant()->create(...);
-   App\Models\User::factory()->deliverer()->create(...);
-   ```
+3. Create the FA Distribuidora user accounts — see [User accounts & access](#user-accounts--access) below: bootstrap the first manager from the CLI, then create every other account through the panel (Sistema › Usuários).
 4. Update the PRD's `Status` field from "Draft" to "Production v1.0".
 5. Annotate the milestone table in the PRD with the actual go-live date.
+
+## User accounts & access
+
+**Logging in.** The only login surface is the admin panel: <https://fa.andersonventurini.cloud/admin/login> (any unauthenticated hit on `/admin` or `/login` redirects there). Sign in with the e-mail and password of an existing account.
+
+**There is no self-service registration — by design.** No `/register` route exists, and `tests/Feature/RegistrationClosedTest.php` fails the suite if one ever appears (e.g. someone enabling Filament's `->registration()`). New accounts can only be created by a logged-in **manager**.
+
+**Registering a new user (manager only).**
+
+1. Log in as a manager.
+2. In the sidebar, open **Sistema › Usuários** and click **Criar** (attendants and deliverers do not see this section).
+3. Fill in name, e-mail, role (`Gerente` / `Atendente` / `Entregador`) and a password of at least 8 characters, then save.
+4. Hand the credentials to the person; they log in at `/admin/login`. To change a password later, edit the user and type a new one (leaving the field blank keeps the current password).
+
+Guardrails enforced by `UserPolicy` + the edit page: only managers can view or manage users, a manager cannot delete their own account, and role changes on your own account are ignored — so the system can never be left without a manager.
+
+**Bootstrapping the very first manager** (fresh database, no users yet) — from the host:
+
+```bash
+docker compose exec app php artisan make:filament-user
+# the role column defaults to 'attendant'; promote the account:
+docker compose exec app php artisan tinker --execute='App\Models\User::where("email", "<email>")->update(["role" => "manager"]);'
+```
+
+From then on, create every account through the panel.
 
 ---
 

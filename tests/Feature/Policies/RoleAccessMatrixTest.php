@@ -9,6 +9,7 @@ use App\Filament\Resources\Customers\CustomerResource;
 use App\Filament\Resources\Products\ProductResource;
 use App\Filament\Resources\Sales\SaleResource;
 use App\Filament\Resources\StockMovements\StockMovementResource;
+use App\Filament\Resources\Users\UserResource;
 use App\Filament\Resources\WaterShellLedgers\WaterShellLedgerResource;
 use App\Models\User;
 
@@ -27,6 +28,7 @@ it('lets the manager view every resource', function () {
         ->and(SaleResource::canViewAny())->toBeTrue()
         ->and(StockMovementResource::canViewAny())->toBeTrue()
         ->and(WaterShellLedgerResource::canViewAny())->toBeTrue()
+        ->and(UserResource::canViewAny())->toBeTrue()
         ->and(Settings::canAccess())->toBeTrue()
         ->and(DepotConfig::canAccess())->toBeTrue();
 });
@@ -40,6 +42,7 @@ it('lets the attendant view operational resources but not settings pages', funct
         ->and(SaleResource::canViewAny())->toBeTrue()
         ->and(StockMovementResource::canViewAny())->toBeTrue()
         ->and(WaterShellLedgerResource::canViewAny())->toBeTrue()
+        ->and(UserResource::canViewAny())->toBeFalse()
         ->and(Settings::canAccess())->toBeFalse()
         ->and(DepotConfig::canAccess())->toBeFalse();
 });
@@ -53,6 +56,7 @@ it('lets the deliverer view only Sales and nothing else', function () {
         ->and(CustomerResource::canViewAny())->toBeFalse()
         ->and(StockMovementResource::canViewAny())->toBeFalse()
         ->and(WaterShellLedgerResource::canViewAny())->toBeFalse()
+        ->and(UserResource::canViewAny())->toBeFalse()
         ->and(Settings::canAccess())->toBeFalse()
         ->and(DepotConfig::canAccess())->toBeFalse();
 });
