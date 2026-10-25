@@ -26,7 +26,7 @@ it('exposes every brand string literal documented in DESIGN.md', function () {
         ->and($brand['tagline'])->toBe('ÁGUA · BEBIDAS · CARVÃO')
         ->and($brand['address']['one_line'])->toContain('Av. Transamazônica, 1197')
         ->and($brand['address']['city'])->toBe('Campinas')
-        ->and($brand['hours']['one_line'])->toContain('Seg–Sáb')
+        ->and($brand['hours']['one_line'])->toContain('Seg a sáb')
         ->and($brand['phones']['landline'])->toBe('(19) 3326-7690')
         ->and($brand['phones']['mobile'])->toBe('(19) 98177-8284')
         ->and($brand['phones']['whatsapp'])->toBe('(19) 98177-8284');
@@ -66,7 +66,7 @@ it('does not leak hex or rgb(a) color literals outside the allow-listed source f
     $offenders = [];
 
     foreach ($scanDirs as $dir) {
-        $abs = $root . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $dir);
+        $abs = $root.DIRECTORY_SEPARATOR.str_replace('/', DIRECTORY_SEPARATOR, $dir);
         if (! is_dir($abs)) {
             continue;
         }
@@ -82,7 +82,7 @@ it('does not leak hex or rgb(a) color literals outside the allow-listed source f
                 continue;
             }
 
-            $rel = ltrim(str_replace([$root . DIRECTORY_SEPARATOR, '\\'], ['', '/'], $file->getPathname()), '/');
+            $rel = ltrim(str_replace([$root.DIRECTORY_SEPARATOR, '\\'], ['', '/'], $file->getPathname()), '/');
             if (in_array($rel, $allowList, true)) {
                 continue;
             }
@@ -104,9 +104,9 @@ it('does not leak hex or rgb(a) color literals outside the allow-listed source f
     expect($offenders)->toBe(
         [],
         'Hex / rgb(a) color literals must live in the allow-listed brand source files only. '
-        . 'Move the value into resources/css/filament/admin/theme.css as a CSS variable, '
-        . 'or — for Filament panel colors — into AdminPanelProvider with a matching comment. '
-        . "Offenders:\n" . json_encode($offenders, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
+        .'Move the value into resources/css/filament/admin/theme.css as a CSS variable, '
+        .'or — for Filament panel colors — into AdminPanelProvider with a matching comment. '
+        ."Offenders:\n".json_encode($offenders, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)
     );
 });
 

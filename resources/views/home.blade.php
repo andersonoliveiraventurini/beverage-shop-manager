@@ -8,13 +8,13 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>{{ config('brand.name') }} — {{ config('brand.tagline') }}</title>
+    <title>{{ config('brand.name') }} | Água, bebidas e carvão com entrega em Campinas</title>
     <meta name="description" content="{{ config('brand.name') }}: água mineral, bebidas, carvão e mais. {{ config('brand.address.one_line') }}. Peça pelo WhatsApp.">
     <link rel="icon" href="{{ asset('favicon.svg') }}">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     {{-- Brand palette (azul-profundo #0B3D91, azul-cristal #3FA9F5, amarelo-solar #F7C948)
          is used inline below. This is a standalone page outside the Filament panel, so the
-         hex lives here locally — keep synced with theme.css / docs/DESIGN.md §2. --}}
+         hex lives here locally; keep synced with theme.css / docs/DESIGN.md §2. --}}
     <style>
         [x-cloak] { display: none !important; }
         .fa-blob { filter: blur(40px); }
@@ -35,7 +35,7 @@
             <p class="text-xs font-semibold uppercase tracking-[0.25em] text-[#F7C948]">{{ config('brand.tagline') }}</p>
             <h1 class="mt-3 text-4xl font-extrabold leading-tight sm:text-6xl">{{ config('brand.name') }}</h1>
             <p class="mt-4 max-w-xl text-base text-white/85 sm:text-lg">
-                Água mineral, refrigerantes, cervejas, carvão e itens de mercearia — entrega rápida e retirada no balcão.
+                Água mineral, refrigerantes, cervejas, carvão e itens de mercearia. Entrega rápida ou retirada no balcão.
             </p>
 
             <div class="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -49,21 +49,54 @@
                 </a>
             </div>
 
-            <dl class="mt-10 grid grid-cols-1 gap-3 text-sm sm:grid-cols-3">
-                <div class="flex items-start gap-2"><span aria-hidden="true">📍</span><div><dt class="font-semibold">Endereço</dt><dd class="text-white/80">{{ config('brand.address.one_line') }}</dd></div></div>
-                <div class="flex items-start gap-2"><span aria-hidden="true">🕗</span><div><dt class="font-semibold">Horário</dt><dd class="text-white/80">{{ config('brand.hours.one_line') }}</dd></div></div>
-                <div class="flex items-start gap-2"><span aria-hidden="true">📞</span><div><dt class="font-semibold">Telefone</dt><dd class="text-white/80"><a class="hover:underline" href="tel:+55{{ $telLandline }}">{{ config('brand.phones.landline') }}</a></dd></div></div>
-            </dl>
+            {{-- Endereço, horário e telefone em cartões grandes: leitura fácil no celular e toque direto para mapa e ligação. --}}
+            <div class="mt-10 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                <a href="{{ $mapUrl }}" target="_blank" rel="noopener" class="flex items-start gap-3 rounded-2xl bg-white/10 p-4 ring-1 ring-white/20 transition hover:bg-white/15">
+                    <svg class="mt-0.5 h-6 w-6 shrink-0 text-[#F7C948]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21Z"/><circle cx="12" cy="9.5" r="2.5"/></svg>
+                    <span>
+                        <span class="block text-xs font-semibold uppercase tracking-wider text-[#F7C948]">Endereço</span>
+                        <span class="mt-1 block text-base font-semibold leading-snug">{{ config('brand.address.street') }}</span>
+                        <span class="block text-sm text-white/80">{{ config('brand.address.district') }}, {{ config('brand.address.city') }}, {{ config('brand.address.state') }}</span>
+                        <span class="mt-1 block text-sm font-semibold text-[#F7C948]">Ver no mapa</span>
+                    </span>
+                </a>
+                <div class="flex items-start gap-3 rounded-2xl bg-white/10 p-4 ring-1 ring-white/20">
+                    <svg class="mt-0.5 h-6 w-6 shrink-0 text-[#F7C948]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+                    <span>
+                        <span class="block text-xs font-semibold uppercase tracking-wider text-[#F7C948]">Horário</span>
+                        <span class="mt-1 block text-base font-semibold leading-snug">{{ config('brand.hours.weekday') }}</span>
+                        <span class="block text-base font-semibold leading-snug">{{ config('brand.hours.sunday') }}</span>
+                    </span>
+                </div>
+                <a href="tel:+55{{ $telLandline }}" class="flex items-start gap-3 rounded-2xl bg-white/10 p-4 ring-1 ring-white/20 transition hover:bg-white/15">
+                    <svg class="mt-0.5 h-6 w-6 shrink-0 text-[#F7C948]" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 4h4l2 5-2.5 1.5a11 11 0 0 0 5 5L15 13l5 2v4a2 2 0 0 1-2 2A16 16 0 0 1 3 6a2 2 0 0 1 2-2"/></svg>
+                    <span>
+                        <span class="block text-xs font-semibold uppercase tracking-wider text-[#F7C948]">Telefone</span>
+                        <span class="fa-num mt-1 block text-lg font-bold leading-snug">{{ config('brand.phones.landline') }}</span>
+                        <span class="block text-sm font-semibold text-[#F7C948]">Tocar para ligar</span>
+                    </span>
+                </a>
+            </div>
         </div>
     </header>
 
     {{-- ===================== CATEGORY NAV ===================== --}}
     @if ($categories->isNotEmpty())
-        <nav class="sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur" aria-label="Categorias">
-            <div class="mx-auto flex max-w-5xl gap-2 overflow-x-auto px-5 py-3">
+        <nav class="sticky top-0 z-30 border-b border-slate-200 bg-white/95 backdrop-blur" aria-label="Categorias">
+            {{-- Celular: uma lista para escolher, porque são muitas categorias para uma fileira de botões. --}}
+            <div class="mx-auto max-w-5xl px-5 py-3 sm:hidden">
+                <label for="categoria" class="sr-only">Escolha a categoria</label>
+                <select id="categoria" data-categorias class="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-base font-semibold text-[#0B3D91]">
+                    <option value="">Escolha a categoria</option>
+                    @foreach ($categories as $category)
+                        <option value="cat-{{ $category->slug }}">{{ $category->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="mx-auto hidden max-w-5xl flex-wrap gap-2 px-5 py-3 sm:flex">
                 @foreach ($categories as $category)
                     <a href="#cat-{{ $category->slug }}"
-                       class="shrink-0 rounded-full bg-slate-100 px-3.5 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-[#0B3D91] hover:text-white">
+                       class="rounded-full bg-slate-100 px-3.5 py-1.5 text-sm font-medium text-slate-700 transition hover:bg-[#0B3D91] hover:text-white">
                         {{ $category->name }}
                     </a>
                 @endforeach
@@ -130,8 +163,8 @@
                 <a href="{{ $mapUrl }}" target="_blank" rel="noopener" class="mt-2 inline-flex items-center gap-1 text-sm font-semibold text-[#F7C948] hover:underline">Ver no mapa →</a>
 
                 <div class="mt-6 space-y-1 text-sm text-white/85">
-                    <p><span class="font-semibold text-white">Seg–Sáb:</span> {{ config('brand.hours.weekday') }}</p>
-                    <p><span class="font-semibold text-white">Dom/feriado:</span> {{ config('brand.hours.sunday') }}</p>
+                    <p>{{ config('brand.hours.weekday') }}</p>
+                    <p>{{ config('brand.hours.sunday') }}</p>
                 </div>
             </div>
 
@@ -150,8 +183,9 @@
         </div>
     </section>
 
-    <footer class="bg-[#082c69] py-6 text-center text-xs text-white/60">
-        © {{ date('Y') }} {{ config('brand.name') }} · {{ config('brand.tagline') }}
+    <footer class="bg-[#082c69] px-5 py-6 pb-28 text-center text-sm text-white/70">
+        <p>© {{ date('Y') }} {{ config('brand.name') }} · {{ config('brand.tagline') }}</p>
+        <p class="mt-2">Site feito por <a href="https://avssistemas.com.br/?utm_source=fa-distribuidora&amp;utm_medium=referral&amp;utm_campaign=rodape" target="_blank" rel="noopener" class="font-semibold text-white underline">AVS Sistemas</a> · avssistemas.com.br</p>
     </footer>
 
     {{-- Barra do pedido: aparece quando o cliente escolhe algum item e esconde o botão flutuante. --}}

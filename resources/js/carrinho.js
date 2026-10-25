@@ -77,3 +77,12 @@ function iniciar() {
 }
 
 document.addEventListener('DOMContentLoaded', iniciar);
+
+// Celular: a lista de categorias leva direto à seção escolhida.
+document.addEventListener('DOMContentLoaded', () => {
+    const lista = document.querySelector('[data-categorias]');
+    lista?.addEventListener('change', () => {
+        document.getElementById(lista.value)?.scrollIntoView({ behavior: 'smooth' });
+        lista.value = '';
+    });
+});

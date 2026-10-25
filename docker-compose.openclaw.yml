@@ -1,0 +1,42 @@
+# Produção no servidor openclaw (fa.avssistemas.com.br), atrás do Caddy compartilhado
+# na rede openclaw_internal. Uso: scripts/deploy-openclaw.sh
+name: fa
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: fa-distribuidora/app
+    container_name: fa_app
+    restart: unless-stopped
+    env_file: .env
+    volumes:
+      - fa_storage:/var/www/html/storage/app
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks: [default, openclaw_internal]
+
+  mysql:
+    image: mysql:8.4
+    container_name: fa_mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: ${DB_DATABASE}
+      MYSQL_USER: ${DB_USERNAME}
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - fa_mysql:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 10s
+      retries: 10
+
+volumes:
+  fa_storage:
+  fa_mysql:
+
+networks:
+  openclaw_internal:
+    external: true

@@ -23,13 +23,13 @@ return [
         'district' => 'Jardim Garcia',
         'city' => 'Campinas',
         'state' => 'SP',
-        'one_line' => 'Av. Transamazônica, 1197 · Jardim Garcia · Campinas–SP',
+        'one_line' => 'Av. Transamazônica, 1197 · Jardim Garcia · Campinas, SP',
     ],
 
     'hours' => [
-        'weekday' => 'Seg–Sáb 08–18h',
-        'sunday' => 'Dom/feriado 08–12h',
-        'one_line' => 'Seg–Sáb 08–18h · Dom/feriado 08–12h',
+        'weekday' => 'Segunda a sábado, 8h às 18h',
+        'sunday' => 'Domingo e feriado, 8h às 12h',
+        'one_line' => 'Seg a sáb, 8h às 18h · Dom e feriado, 8h às 12h',
     ],
 
     'phones' => [
