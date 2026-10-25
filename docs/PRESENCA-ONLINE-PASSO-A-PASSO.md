@@ -6,6 +6,18 @@ Legenda: **[Anderson]** faz sozinho · **[Pai]** precisa do dono (documento, cel
 
 ---
 
+## Próximos passos (atualizado em 25/10/2026)
+
+Já feito: vitrine sem preços com pedido pelo WhatsApp, cartões de endereço/horário/telefone, categorias em lista no celular, "Site feito por AVS Sistemas" no rodapé, site publicado no servidor openclaw (`/srv/fa`, deploy com `bash scripts/deploy-openclaw.sh`).
+
+1. **[Anderson]** Registro.br → avssistemas.com.br → DNS → Editar zona → Nova entrada: tipo **A**, nome **fa**, dados **204.216.154.79** → Salvar. O certificado sai sozinho em até 5 minutos depois que o DNS propagar. Conferir https://fa.avssistemas.com.br no celular.
+2. **[Anderson]** Criar o usuário do painel `/admin` (`docker exec -it fa_app php artisan make:filament-user`) e revisar o catálogo: tirar o que não vende, conferir nomes e tamanhos.
+3. **[Pai]** Confirmar o logo (Bloco 1); depois eu coloco na vitrine, no favicon e na prévia do WhatsApp.
+4. **[Pai]** Reivindicar o Perfil no Google (4.1) e adicionar o Anderson como administrador.
+5. **[Anderson]** Perfil no Google: categoria, site, descrição e bairros de entrega (4.2 e 4.3).
+6. **[Claude]** Ajustes para o Google no site (Bloco 3): dados de loja local, bairros, mapa, sitemap, botão de ligar.
+7. **[Pai]** Autorização por escrito para a AVS mostrar o site como trabalho entregue (Bloco 6).
+
 ## Situação hoje
 
 | Onde | Como está | Problema |
