@@ -17,7 +17,10 @@ it('renders the public homepage without authentication', function () {
         ->assertSee('FA Distribuidora')
         ->assertSee('Galão Acqua Fina')
         ->assertSee('20L')
-        ->assertSee('15,00')                       // BRL price
+        ->assertDontSee('15,00')                   // sem preço: o valor é combinado no WhatsApp
+        ->assertDontSee('R$')
+        ->assertSee('data-carrinho-item="Galão Acqua Fina 20L (retornável)"', false)
+        ->assertSee('data-whatsapp="5519981778284"', false)
         ->assertSee('wa.me/55', false)             // WhatsApp CTA link
         ->assertSee('Av. Transamazônica, 1197');   // depot address from config('brand')
 });

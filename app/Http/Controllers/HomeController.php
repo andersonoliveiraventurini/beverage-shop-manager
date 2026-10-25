@@ -29,12 +29,13 @@ class HomeController extends Controller
             ->get();
 
         $whatsappDigits = preg_replace('/\D/', '', (string) config('brand.phones.whatsapp'));
-        $whatsappUrl = 'https://wa.me/55' . $whatsappDigits
-            . '?text=' . rawurlencode('Olá! Gostaria de fazer um pedido na ' . config('brand.name') . '.');
+        $whatsappUrl = 'https://wa.me/55'.$whatsappDigits
+            .'?text='.rawurlencode('Olá! Gostaria de fazer um pedido na '.config('brand.name').'.');
 
         return view('home', [
             'categories' => $categories,
             'whatsappUrl' => $whatsappUrl,
+            'whatsappNumber' => '55'.$whatsappDigits,
         ]);
     }
 }
